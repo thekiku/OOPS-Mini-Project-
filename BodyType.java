@@ -1,0 +1,3 @@
+public enum BodyType {
+    PLANET, MOON, SHUTTLE, BLACK_HOLE, PULSAR, SUN, WORMHOLE, ASTEROID
+}
