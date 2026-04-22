@@ -1,7 +1,3 @@
-package frontend;
-
-import backend.SolarSystemEngine;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;

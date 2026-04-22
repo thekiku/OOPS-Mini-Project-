@@ -1,5 +1,3 @@
-package backend;
-
 import javax.swing.*;
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -16,6 +14,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 
 public class SolarSystemEngine extends JFrame {
 
@@ -228,6 +228,7 @@ public class SolarSystemEngine extends JFrame {
         spawnCard.add(btn("Add Random Orbiter", e->sim.addOrbiter()));              spawnCard.add(gap(2));
         spawnCard.add(btn("Scatter Asteroids",  e->sim.scatterAsteroids()));        spawnCard.add(gap(2));
         spawnCard.add(btn("Big Bang",           e->sim.bigBang()));                 spawnCard.add(gap(2));
+        spawnCard.add(btn("Trigger Supernova",  e->sim.triggerSupernova(),new Color(112,28,20))); spawnCard.add(gap(2));
         spawnCard.add(btn("Clear All",          e->sim.clearAll(),new Color(80,22,22)));
         p.add(spawnCard); p.add(gap(6));
 
@@ -420,7 +421,7 @@ public class SolarSystemEngine extends JFrame {
         toggle.addActionListener(e -> {
             chatCollapsed = !chatCollapsed;
             body.setVisible(!chatCollapsed);
-            toggle.setText(chatCollapsed ? "▲ Expand" : "▼ Collapse");
+            toggle.setText(chatCollapsed ? "▼ Expand" : "▲ Collapse");
             outer.revalidate();
             outer.repaint();
         });
@@ -441,7 +442,7 @@ public class SolarSystemEngine extends JFrame {
         "pulsars, wormhole teleportation, asteroid belts, a flyable Space Shuttle (WASD controls), " +
         "planet close-up views with telemetry (mass, gravity, temperature, atmosphere, water, survival %), " +
         "collision physics with momentum conservation, 3 visual themes (Default/Hail Mary/Interstellar), " +
-        "sun mass/radius sliders, orbit trails, and a Big Bang mode. " +
+        "sun mass/radius sliders, orbit trails, a Big Bang mode, and a triggerable supernova event. " +
         "Keep answers under 3 sentences. Be specific and technical when asked. " +
         "If a question is unrelated to physics or this simulation, gently redirect.";
 
@@ -683,6 +684,8 @@ public class SolarSystemEngine extends JFrame {
         boolean paused=false, showOrbits=true, showTrails=true;
         int theme=0;
         double sunAlive=1.0, sunX, sunY, sunM=2000, sunR=28;
+        boolean supernovaActive=false;
+        double supernovaAge=0, supernovaShockR=0, supernovaFade=0;
         double[] stX,stY,stR,stB;
         javax.swing.Timer loop;
         Point drag0=null,drag1=null;
@@ -777,6 +780,7 @@ public class SolarSystemEngine extends JFrame {
         void createSun(){
             sunM=sunMassSlider.getValue(); sunR=sunRadSlider.getValue();
             sunX=cx(); sunY=cy(); sunAlive=1.0;
+            supernovaActive=false; supernovaAge=0; supernovaShockR=0; supernovaFade=0;
         }
 
         void loadSolarSystem(){
@@ -833,6 +837,21 @@ public class SolarSystemEngine extends JFrame {
 
         void clearAll(){bodies.clear();sparks.clear();createSun();}
 
+        void triggerSupernova(){
+            if(supernovaActive||sunAlive<=0.02) return;
+            supernovaActive=true;
+            supernovaAge=0;
+            supernovaShockR=Math.max(8,sunR*1.1);
+            supernovaFade=1.0;
+            sunAlive=0;
+            for(Body b:bodies) b.kepler=false;
+            for(int i=0;i<220;i++){
+                double ang=Math.random()*Math.PI*2,spd=2+Math.random()*13;
+                Color c=i%4==0?new Color(255,245,210):new Color(255,120+(int)(100*Math.random()),30+(int)(40*Math.random()));
+                sparks.add(new Particle(sunX,sunY,c,Math.cos(ang)*spd,Math.sin(ang)*spd,2.2f));
+            }
+        }
+
         void spawn(double x,double y,double vx,double vy){
             String ts=(String)bodyTypeCombo.getSelectedItem(); if(ts==null) ts="Planet";
             int ci=colorCombo.getSelectedIndex();
@@ -869,6 +888,40 @@ public class SolarSystemEngine extends JFrame {
             s.vx*=0.998; s.vy*=0.998;
         }
 
+        void updateSupernova(double dt){
+            if(!supernovaActive&&supernovaFade<=0) return;
+            if(supernovaActive){
+                supernovaAge+=dt;
+                supernovaShockR=sunR*1.2+supernovaAge*3.8;
+                double shellW=Math.max(16,sunR*1.2+supernovaAge*0.14);
+                int burst=Math.max(2,(int)(3+dt*2));
+                for(int i=0;i<burst;i++){
+                    double ang=Math.random()*Math.PI*2,spd=5+Math.random()*10;
+                    Color c=new Color(255,130+(int)(90*Math.random()),40+(int)(40*Math.random()));
+                    sparks.add(new Particle(sunX,sunY,c,Math.cos(ang)*spd,Math.sin(ang)*spd,2f));
+                }
+                for(Body b:bodies){
+                    if(b.dead||b.type==BT.BLACK_HOLE||b.type==BT.WORMHOLE) continue;
+                    double dx=b.x-sunX,dy=b.y-sunY,d=Math.hypot(dx,dy)+0.001;
+                    double shellHit=Math.max(0,1-Math.abs(d-supernovaShockR)/shellW);
+                    if(shellHit<=0) continue;
+                    double impulse=(0.2+shellHit*1.4)*dt;
+                    b.vx+=(dx/d)*impulse; b.vy+=(dy/d)*impulse;
+                    b.kepler=false;
+                    if((b.type==BT.PLANET||b.type==BT.MOON||b.type==BT.ASTEROID)&&shellHit>0.6){
+                        b.dead=true; sparks(b.x,b.y,14,b.ci);
+                    } else if(b.type==BT.SHUTTLE&&shellHit>0.72){
+                        b.dead=true; sparks(b.x,b.y,9,b.ci);
+                    }
+                }
+                supernovaFade=Math.max(0.35,1.0-supernovaAge/260.0);
+                if(supernovaAge>220) supernovaActive=false;
+            } else {
+                supernovaFade=Math.max(0,supernovaFade-0.012*dt);
+                supernovaShockR+=2.4*dt;
+            }
+        }
+
         void tick(double dt){
             sunX=cx(); sunY=cy();
             sunM=sunMassSlider.getValue(); sunR=sunRadSlider.getValue();
@@ -901,6 +954,8 @@ public class SolarSystemEngine extends JFrame {
                 a.vx+=ax*dt; a.vy+=ay*dt;
                 double spd=Math.hypot(a.vx,a.vy); if(spd>30){a.vx*=30/spd;a.vy*=30/spd;}
             }
+
+            updateSupernova(dt);
 
             // wormhole teleport
             for(Body a:bodies){
@@ -955,6 +1010,12 @@ public class SolarSystemEngine extends JFrame {
                 if(a.type!=BT.BLACK_HOLE&&a.type!=BT.PULSAR&&a.type!=BT.WORMHOLE&&sunAlive>0.1){
                     double sdx=a.x-sunX,sdy=a.y-sunY,sd=Math.hypot(sdx,sdy);
                     double surf=sunR*sunAlive, corona=surf+a.radius*1.6;
+                    if(a.type==BT.PLANET&&sd<=surf+a.radius){
+                        sparks(a.x,a.y,18,a.ci);
+                        for(int k=0;k<8;k++)
+                            sparks.add(new Particle(sunX+(Math.random()-.5)*sunR*.9,sunY+(Math.random()-.5)*sunR*.9,new Color(255,170+(int)(80*Math.random()),40+(int)(40*Math.random()))));
+                        a.dead=true;rm.add(a);continue;
+                    }
                     if(sd<corona){
                         double nx=sd>0?sdx/sd:1,ny=sd>0?sdy/sd:0;
                         double depth=Math.max(0,Math.min(1,(surf+a.radius*1.1-sd)/(a.radius*2.1+surf*0.35)));
@@ -1133,7 +1194,8 @@ public class SolarSystemEngine extends JFrame {
             g2.setPaint(new GradientPaint(pw/2f,ph/2f,a,pw,ph,b)); g2.fillRect(0,0,pw,ph);
             drawStars(g2,pw,ph);
             if(showOrbits) drawOrbits(g2);
-            if(sunAlive>0.02) drawSun(g2);
+            if(supernovaActive||supernovaFade>0.01) drawSupernova(g2);
+            else if(sunAlive>0.02) drawSun(g2);
             for(Body bd:bodies) if(bd.type!=BT.BLACK_HOLE&&bd.type!=BT.PULSAR&&bd.type!=BT.WORMHOLE) drawBody(g2,bd);
             for(Body bd:bodies) if(bd.type==BT.PULSAR) drawPulsar(g2,bd);
             for(Body bd:bodies) if(bd.type==BT.BLACK_HOLE) drawBH(g2,bd);
@@ -1198,6 +1260,32 @@ public class SolarSystemEngine extends JFrame {
             RadialGradientPaint spec=new RadialGradientPaint((float)(sunX-r*.33),(float)(sunY-r*.33),r*.56f,
                 new float[]{0f,1f},new Color[]{new Color(255,255,240,165),new Color(255,255,255,0)});
             g2.setPaint(spec); g2.fillOval((int)(sunX-r),(int)(sunY-r),r*2,r*2);
+        }
+
+        void drawSupernova(Graphics2D g2){
+            float fade=(float)Math.max(0,Math.min(1,supernovaFade));
+            float flash=supernovaActive?(float)Math.max(0,1.0-supernovaAge/80.0):0f;
+            double coreR=Math.max(4,sunR*(1.3+Math.min(supernovaAge,80)*0.03));
+            double glowR=Math.max(coreR*2.3,supernovaShockR*0.45);
+            RadialGradientPaint core=new RadialGradientPaint((float)sunX,(float)sunY,(float)glowR,
+                new float[]{0f,.14f,.42f,.72f,1f},
+                new Color[]{new Color(255,255,240,(int)(230*Math.min(1f,fade+flash))),new Color(255,225,140,(int)(190*fade)),
+                    new Color(255,145,55,(int)(130*fade)),new Color(220,70,30,(int)(70*fade)),new Color(50,10,6,0)});
+            g2.setPaint(core);
+            g2.fillOval((int)(sunX-glowR),(int)(sunY-glowR),(int)(glowR*2),(int)(glowR*2));
+
+            double ringR=Math.max(sunR*1.2,supernovaShockR);
+            if(ringR>4){
+                int ringA=Math.max(0,Math.min(255,(int)(110*fade+(supernovaActive?45:0))));
+                g2.setStroke(new BasicStroke(Math.max(1.5f,(float)(sunR*0.16))));
+                g2.setColor(new Color(255,220,145,ringA));
+                g2.drawOval((int)(sunX-ringR),(int)(sunY-ringR),(int)(ringR*2),(int)(ringR*2));
+                double ringR2=ringR*0.86;
+                g2.setStroke(new BasicStroke(Math.max(1f,(float)(sunR*0.1))));
+                g2.setColor(new Color(255,130,70,(int)(ringA*0.75)));
+                g2.drawOval((int)(sunX-ringR2),(int)(sunY-ringR2),(int)(ringR2*2),(int)(ringR2*2));
+                g2.setStroke(new BasicStroke(1));
+            }
         }
 
         void drawBody(Graphics2D g2,Body b){
@@ -1498,7 +1586,8 @@ public class SolarSystemEngine extends JFrame {
         void drawHUD(Graphics2D g2,int pw,int ph){
             String th=theme==1?"HAIL MARY":theme==2?"INTERSTELLAR":"DEFAULT";
             String shut=shuttle!=null?"WASD Shuttle Active":"Spawn Shuttle + WASD to fly";
-            String s="Drag=Velocity  |  Click=Closeup  |  Bodies:"+bodies.size()+"  |  "+shut+"  |  Theme:"+th+(sunAlive<0.5?"  [SUN: "+(int)(sunAlive*100)+"%]":"")+(paused?"  [PAUSED]":"");
+            String star=supernovaActive?"  [SUPERNOVA]":(sunAlive<0.5?"  [SUN: "+(int)(sunAlive*100)+"%]":"");
+            String s="Drag=Velocity  |  Click=Closeup  |  Bodies:"+bodies.size()+"  |  "+shut+"  |  Theme:"+th+star+(paused?"  [PAUSED]":"");
             g2.setFont(new Font("Segoe UI",Font.BOLD,13));
             FontMetrics fm=g2.getFontMetrics(); int padX=12,boxH=fm.getHeight()+14;
             int boxY=ph-boxH-8,boxW=Math.min(pw-14,fm.stringWidth(s)+padX*2);
