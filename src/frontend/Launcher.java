@@ -29,6 +29,18 @@ public class Launcher extends JFrame {
         SwingUtilities.invokeLater(() -> new SolarSystemEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
     }
 
+    void openCollisionSim() {
+        setVisible(false);
+        dispose();
+        SwingUtilities.invokeLater(() -> new CollisionEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
+    }
+
+    void openBuoyancySim() {
+        setVisible(false);
+        dispose();
+        SwingUtilities.invokeLater(() -> new BuoyancyEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     static class HomePanel extends JPanel {
 
@@ -156,6 +168,61 @@ public class Launcher extends JFrame {
             dp.add(lbl, BorderLayout.CENTER);
             dp.add(btnPanel, BorderLayout.SOUTH);
             d.setContentPane(dp); d.setSize(380, 200); d.setLocationRelativeTo(this); d.setVisible(true);
+        }
+
+        void showCollisionBuoyancyMenu() {
+            JDialog d = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Choose Simulation", true);
+            JPanel dp = new JPanel(new BorderLayout(10, 10));
+            dp.setBackground(new Color(8, 12, 30));
+            dp.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(60, 80, 160), 1),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)
+            ));
+
+            JLabel lbl = new JLabel("Launch Collision or Buoyancy module", SwingConstants.CENTER);
+            lbl.setForeground(new Color(180, 210, 255));
+            lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            JButton collisionBtn = new JButton("Collision Engine");
+            JButton buoyancyBtn = new JButton("Buoyancy Engine");
+            JButton cancelBtn = new JButton("Cancel");
+
+            JButton[] buttons = {collisionBtn, buoyancyBtn, cancelBtn};
+            for (JButton b : buttons) {
+                b.setFocusPainted(false);
+                b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                b.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+            }
+            collisionBtn.setBackground(new Color(25, 65, 130));
+            collisionBtn.setForeground(new Color(175, 215, 255));
+            buoyancyBtn.setBackground(new Color(20, 72, 126));
+            buoyancyBtn.setForeground(new Color(175, 225, 255));
+            cancelBtn.setBackground(new Color(30, 38, 65));
+            cancelBtn.setForeground(new Color(170, 185, 215));
+
+            collisionBtn.addActionListener(ev -> {
+                d.dispose();
+                launcher.openCollisionSim();
+            });
+            buoyancyBtn.addActionListener(ev -> {
+                d.dispose();
+                launcher.openBuoyancySim();
+            });
+            cancelBtn.addActionListener(ev -> d.dispose());
+
+            JPanel btnPanel = new JPanel(new GridLayout(1, 3, 10, 0));
+            btnPanel.setOpaque(false);
+            btnPanel.add(collisionBtn);
+            btnPanel.add(buoyancyBtn);
+            btnPanel.add(cancelBtn);
+
+            dp.add(lbl, BorderLayout.NORTH);
+            dp.add(btnPanel, BorderLayout.CENTER);
+
+            d.setContentPane(dp);
+            d.setSize(560, 150);
+            d.setLocationRelativeTo(this);
+            d.setVisible(true);
         }
 
         @Override protected void paintComponent(Graphics g) {
