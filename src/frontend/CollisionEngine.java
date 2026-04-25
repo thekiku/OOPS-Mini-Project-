@@ -60,6 +60,8 @@ public class CollisionEngine extends JFrame {
         double initVel = 180;
         int    dir     = 0;          // 0=→ 1=← 2=↑ 3=↓
         boolean active = true;
+        double launchVx = 0, launchVy = 0;
+        boolean customLaunch = false;
         Color  col;
         // visual
         double sx = 1, sy = 1;      // squash/stretch
@@ -108,6 +110,9 @@ public class CollisionEngine extends JFrame {
         double elasticity=0.8;
         double initKE=0;
 
+        Point drag0=null, drag1=null;
+        Body dragBody=null;
+
         // stars
         float[] stX,stY,stSz,stBr;
 
@@ -121,6 +126,36 @@ public class CollisionEngine extends JFrame {
             bodies=new Body[]{new Body(0,BOX_CLR[0]),new Body(1,BOX_CLR[1]),new Body(2,BOX_CLR[2])};
             bodies[2].active=false;
             place();
+            addMouseListener(new MouseAdapter(){
+                @Override public void mousePressed(MouseEvent e){
+                    if(running) return;
+                    dragBody=bodyAt(e.getX(), e.getY());
+                    if(dragBody==null) return;
+                    requestFocusInWindow();
+                    drag0=e.getPoint();
+                    drag1=e.getPoint();
+                }
+                @Override public void mouseReleased(MouseEvent e){
+                    if(dragBody==null || drag0==null) return;
+                    int dx=e.getX()-drag0.x, dy=e.getY()-drag0.y;
+                    double len=Math.hypot(dx, dy);
+                    if(len<6){
+                        dragBody.customLaunch=false;
+                    } else {
+                        dragBody.launchVx=dx*0.1;
+                        dragBody.launchVy=dy*0.1;
+                        dragBody.customLaunch=true;
+                    }
+                    drag0=null; drag1=null; dragBody=null; repaint();
+                }
+            });
+            addMouseMotionListener(new MouseMotionAdapter(){
+                @Override public void mouseDragged(MouseEvent e){
+                    if(dragBody==null) return;
+                    drag1=e.getPoint();
+                    repaint();
+                }
+            });
             loop=new javax.swing.Timer(15,e->{if(running)tick(0.015);anim();repaint();});
             loop.start();
         }
@@ -130,20 +165,48 @@ public class CollisionEngine extends JFrame {
         int rightX(){ return getWidth()-38; }
 
         void place(){
+            place(true);
+        }
+
+        void place(boolean clearLaunch){
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int[] xs={pw/4, pw/2, 3*pw/4};
-            for(int i=0;i<3;i++){Body b=bodies[i];b.x=xs[i];b.y=floorY()-b.side()/2;b.vx=b.vy=0;b.trail.clear();b.sx=b.sy=1;}
+            for(int i=0;i<3;i++){
+                Body b=bodies[i];
+                b.x=xs[i];
+                b.y=floorY()-b.side()/2;
+                b.vx=b.vy=0;
+                b.trail.clear();
+                b.sx=b.sy=1;
+                if(clearLaunch) b.customLaunch=false;
+            }
             running=false; sparks.clear();
         }
 
         void launch(){
-            place(); initKE=0;
+            place(false); initKE=0;
             for(Body b:bodies){
                 if(!b.active)continue;
-                switch(b.dir){case 0:b.vx=b.initVel;b.vy=0;break;case 1:b.vx=-b.initVel;b.vy=0;break;case 2:b.vx=0;b.vy=-b.initVel;break;default:b.vx=0;b.vy=b.initVel;}
+                if(b.customLaunch){
+                    b.vx=b.launchVx;
+                    b.vy=b.launchVy;
+                } else {
+                    switch(b.dir){case 0:b.vx=b.initVel;b.vy=0;break;case 1:b.vx=-b.initVel;b.vy=0;break;case 2:b.vx=0;b.vy=-b.initVel;break;default:b.vx=0;b.vy=b.initVel;}
+                }
                 initKE+=0.5*b.mass*(b.vx*b.vx+b.vy*b.vy);
             }
             running=true;
+        }
+
+        Body bodyAt(int mx,int my){
+            for(int i=bodies.length-1;i>=0;i--){
+                Body b=bodies[i];
+                if(!b.active) continue;
+                double s=b.side();
+                double lx=b.x-s/2, ty=b.y-s/2, rx=b.x+s/2, by=b.y+s/2;
+                if(mx>=lx && mx<=rx && my>=ty && my<=by) return b;
+            }
+            return null;
         }
 
         void anim(){
@@ -159,7 +222,17 @@ public class CollisionEngine extends JFrame {
                 if(showTrails){b.trail.add(new double[]{b.x,b.y});if(b.trail.size()>90)b.trail.remove(0);}
                 // floor
                 double half=b.side()/2;
-                if(b.y+half>fy){b.y=fy-half;if(Math.abs(b.vy)>3){b.vy=-b.vy*elasticity;b.vx*=(0.65+0.35*elasticity);b.sx=1.45;b.sy=0.65;b.glow=1;spark(b.x,b.y+half,b.col,4);}else b.vy=0;}
+                if(b.y+half>fy){
+                    b.y=fy-half;
+                    if(Math.abs(b.vy)>3 || gravOn){
+                        b.vy=-b.vy*elasticity;
+                        b.vx*=(0.65+0.35*elasticity);
+                        b.sx=1.45; b.sy=0.65; b.glow=1;
+                        spark(b.x,b.y+half,b.col,4);
+                    } else {
+                        b.vy=0;
+                    }
+                }
                 if(b.y-half<5){b.y=5+half;b.vy=Math.abs(b.vy)*elasticity;}
                 if(wallL&&b.x-half<lx){b.x=lx+half;b.vx=Math.abs(b.vx)*elasticity;b.sx=0.65;b.sy=1.35;b.glow=1;spark(lx,b.y,b.col,5);}
                 if(wallR&&b.x+half>rx){b.x=rx-half;b.vx=-Math.abs(b.vx)*elasticity;b.sx=0.65;b.sy=1.35;b.glow=1;spark(rx,b.y,b.col,5);}
@@ -212,6 +285,7 @@ public class CollisionEngine extends JFrame {
             drawArena(g2,pw,ph);
             if(showTrails)drawTrails(g2);
             if(showArrows)drawArrows(g2);
+            drawDragPreview(g2);
             drawSparks(g2);
             drawBodies(g2);
             drawHUD(g2,pw,ph);
@@ -295,11 +369,16 @@ public class CollisionEngine extends JFrame {
         void drawArrows(Graphics2D g2){
             for(Body b:bodies){
                 if(!b.active)continue;
-                double spd=running?Math.hypot(b.vx,b.vy):b.initVel;
+                double spd=running?Math.hypot(b.vx,b.vy):(b.customLaunch?Math.hypot(b.launchVx,b.launchVy):b.initVel);
                 if(spd<1)continue;
                 double ax,ay;
-                if(running&&(Math.abs(b.vx)>1||Math.abs(b.vy)>1)){ax=b.vx/spd;ay=b.vy/spd;}
-                else{switch(b.dir){case 0:ax=1;ay=0;break;case 1:ax=-1;ay=0;break;case 2:ax=0;ay=-1;break;default:ax=0;ay=1;}}
+                if(running&&(Math.abs(b.vx)>1||Math.abs(b.vy)>1)){
+                    ax=b.vx/spd;ay=b.vy/spd;
+                } else if(b.customLaunch){
+                    ax=b.launchVx/spd;ay=b.launchVy/spd;
+                } else {
+                    switch(b.dir){case 0:ax=1;ay=0;break;case 1:ax=-1;ay=0;break;case 2:ax=0;ay=-1;break;default:ax=0;ay=1;}
+                }
                 double len=Math.min(18+spd*0.5,240);
                 double ex=b.x+ax*len,ey=b.y+ay*len;
                 // check overlap with other arrows for color blend
@@ -330,6 +409,22 @@ public class CollisionEngine extends JFrame {
                 g2.drawString(String.format("%.0f",spd),(int)(ex+ax*7),(int)(ey+ay*7));
             }
             g2.setStroke(new BasicStroke(1));
+        }
+
+        void drawDragPreview(Graphics2D g2){
+            if(dragBody==null || drag0==null || drag1==null) return;
+            int dx=drag1.x-drag0.x, dy=drag1.y-drag0.y;
+            if(Math.hypot(dx,dy)<5) return;
+            g2.setColor(new Color(255,255,255,85));
+            g2.setStroke(new BasicStroke(1.5f,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND,1f,new float[]{5f,5f},0f));
+            g2.drawLine(drag0.x,drag0.y,drag1.x,drag1.y);
+            g2.setStroke(new BasicStroke(1));
+            double ang=Math.atan2(dy,dx);
+            int[]hx={drag1.x,(int)(drag1.x-12*Math.cos(ang-.4)),(int)(drag1.x-12*Math.cos(ang+.4))};
+            int[]hy={drag1.y,(int)(drag1.y-12*Math.sin(ang-.4)),(int)(drag1.y-12*Math.sin(ang+.4))};
+            g2.setColor(new Color(255,255,255,145));
+            g2.fillPolygon(hx,hy,3);
+            g2.fillOval(drag0.x-4,drag0.y-4,8,8);
         }
 
         void drawSparks(Graphics2D g2){for(Spark s:sparks)s.draw(g2);}

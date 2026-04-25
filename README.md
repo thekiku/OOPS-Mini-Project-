@@ -115,8 +115,11 @@ javac -version
 
 ## Author
 
-- Your Name Here
-- Course: OOP / Object Oriented Programming
+- Salil Regi
+- Shaheer Sheikh
+- Shaurya Pandey
+- Tejaswi D
+- Course: Object Oriented Programming
 - Semester: 2nd Sem
 
 ## License

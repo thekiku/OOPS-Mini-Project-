@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Launcher",
+            "type": "java",
+            "request": "launch",
+            "mainClass": "Launcher",
+            "cwd": "${workspaceFolder}",
+            "args": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Build Project",
+            "classPaths": ["${workspaceFolder}/out"],
+            "modulePaths": []
+        }
+    ]
+}
