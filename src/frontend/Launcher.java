@@ -30,6 +30,18 @@ public class Launcher extends JFrame {
         SwingUtilities.invokeLater(() -> new SolarSystemEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
     }
 
+    void openCollisionEngine() {
+        setVisible(false);
+        dispose();
+        SwingUtilities.invokeLater(() -> new CollisionEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
+    }
+
+    void openBuoyancyEngine() {
+        setVisible(false);
+        dispose();
+        SwingUtilities.invokeLater(() -> new BuoyancyEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     static class HomePanel extends JPanel {
 
@@ -100,7 +112,7 @@ public class Launcher extends JFrame {
             addMouseListener(new MouseAdapter() {
                 public void mouseClicked(MouseEvent e) {
                     if (inCard(e.getX(), e.getY(), spaceCardX))   launcher.openSolarSim();
-                    if (inCard(e.getX(), e.getY(), collideCardX)) showComingSoon();
+                    if (inCard(e.getX(), e.getY(), collideCardX)) showCollisionBuoyancyMenu();
                 }
                 public void mouseExited(MouseEvent e) { mouseOnSpace = mouseOnCollide = false; }
             });
@@ -121,29 +133,59 @@ public class Launcher extends JFrame {
             return mx >= cx && mx <= cx + CARD_W && my >= cardY && my <= cardY + CARD_H;
         }
 
-        void showComingSoon() {
-            JDialog d = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Coming Soon", true);
+        void showCollisionBuoyancyMenu() {
+            JDialog d = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Collision & Buoyancy", true);
             JPanel dp = new JPanel(new BorderLayout());
             dp.setBackground(new Color(8, 12, 30));
             dp.setBorder(BorderFactory.createLineBorder(new Color(60, 80, 160), 1));
             JLabel lbl = new JLabel("<html><div style='text-align:center;padding:24px 32px;'>"
                 + "<span style='font-size:18px;color:#a0c4ff'>Collisions & Buoyancy</span><br><br>"
-                + "<span style='color:#7090c0'>This module is under development.<br>Stay tuned for the next update!</span>"
+                + "<span style='color:#7090c0'>Choose which simulation to launch.</span>"
                 + "</div></html>", SwingConstants.CENTER);
             lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            JButton ok = new JButton("Got it");
-            ok.setBackground(new Color(25, 50, 110));
-            ok.setForeground(new Color(160, 200, 255));
-            ok.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            ok.setFocusPainted(false);
-            ok.setBorder(BorderFactory.createEmptyBorder(8, 28, 8, 28));
-            ok.addActionListener(ev -> d.dispose());
+            JButton collisionBtn = new JButton("Launch Collision Engine");
+            collisionBtn.setBackground(new Color(25, 50, 110));
+            collisionBtn.setForeground(new Color(160, 200, 255));
+            collisionBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            collisionBtn.setFocusPainted(false);
+            collisionBtn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+            collisionBtn.addActionListener(ev -> {
+                d.dispose();
+                launcher.openCollisionEngine();
+            });
+
+            JButton buoyancyBtn = new JButton("Launch Buoyancy Engine");
+            buoyancyBtn.setBackground(new Color(30, 70, 120));
+            buoyancyBtn.setForeground(new Color(180, 220, 255));
+            buoyancyBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            buoyancyBtn.setFocusPainted(false);
+            buoyancyBtn.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+            buoyancyBtn.addActionListener(ev -> {
+                d.dispose();
+                launcher.openBuoyancyEngine();
+            });
+
+            JButton closeBtn = new JButton("Close");
+            closeBtn.setBackground(new Color(38, 50, 80));
+            closeBtn.setForeground(new Color(170, 190, 225));
+            closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            closeBtn.setFocusPainted(false);
+            closeBtn.setBorder(BorderFactory.createEmptyBorder(8, 24, 8, 24));
+            closeBtn.addActionListener(ev -> d.dispose());
+
             JPanel btnPanel = new JPanel(); btnPanel.setBackground(new Color(8,12,30));
             btnPanel.setBorder(BorderFactory.createEmptyBorder(0,0,16,0));
-            btnPanel.add(ok);
+            btnPanel.add(collisionBtn);
+            btnPanel.add(Box.createHorizontalStrut(8));
+            btnPanel.add(buoyancyBtn);
+            btnPanel.add(Box.createHorizontalStrut(8));
+            btnPanel.add(closeBtn);
             dp.add(lbl, BorderLayout.CENTER);
             dp.add(btnPanel, BorderLayout.SOUTH);
-            d.setContentPane(dp); d.setSize(380, 200); d.setLocationRelativeTo(this); d.setVisible(true);
+            d.setContentPane(dp);
+            d.setSize(620, 220);
+            d.setLocationRelativeTo(this);
+            d.setVisible(true);
         }
 
         @Override protected void paintComponent(Graphics g) {
@@ -252,7 +294,7 @@ public class Launcher extends JFrame {
             g2.setColor(blend(new Color(180,200,240),new Color(220,230,255),hover));
             g2.drawString(t2,x+w/2-fm.stringWidth(t2)/2,y+210);
             // description lines
-            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Buoyancy & fluid dynamics","Coming soon — stay tuned!"};
+            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Buoyancy & fluid dynamics","Launch either module"};
             g2.setFont(new Font("Segoe UI",Font.PLAIN,13)); fm=g2.getFontMetrics(); g2.setColor(C_MUTED);
             for(int i=0;i<desc.length;i++) g2.drawString(desc[i],x+w/2-fm.stringWidth(desc[i])/2,y+240+i*21);
             // divider
@@ -260,7 +302,7 @@ public class Launcher extends JFrame {
             // button
             drawBtn(g2,x+w/2,y+338,isSpace,hover);
             // status badge
-            String badge=isSpace?"● AVAILABLE":"◌ COMING SOON";
+            String badge=isSpace?"● AVAILABLE":"● AVAILABLE";
             Color bc=isSpace?new Color(80,200,120):new Color(140,120,180);
             g2.setFont(new Font("Segoe UI",Font.BOLD,11)); fm=g2.getFontMetrics();
             g2.setColor(blend(new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),110),new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),215),hover));
@@ -304,7 +346,7 @@ public class Launcher extends JFrame {
             Color edgeBase=isSpace?new Color(80,130,220,78):new Color(130,90,200,68);
             Color edgeHov =isSpace?new Color(100,170,255,175):new Color(150,110,230,138);
             g2.setColor(blend(edgeBase,edgeHov,hover)); g2.setStroke(new BasicStroke(1.2f)); g2.drawRoundRect(bx,by,bw,bh,12,12); g2.setStroke(new BasicStroke(1));
-            String label=isSpace?"Launch Simulation →":"Coming Soon";
+            String label=isSpace?"Launch Simulation →":"Launch Module →";
             g2.setFont(new Font("Segoe UI",Font.BOLD,14)); FontMetrics fm=g2.getFontMetrics();
             Color tc=isSpace?new Color(180,215,255):new Color(160,140,210);
             Color th=isSpace?new Color(235,245,255):new Color(200,180,240);
@@ -313,7 +355,7 @@ public class Launcher extends JFrame {
 
         void drawFooter(Graphics2D g2){
             g2.setFont(new Font("Segoe UI",Font.PLAIN,12)); g2.setColor(new Color(65,90,140));
-            String f="Physics Lab  ·  Solar System Engine v2  ·  Collisions & Buoyancy coming soon";
+            String f="Physics Lab  ·  Solar System Engine v2  ·  Collision + Buoyancy modules available";
             FontMetrics fm=g2.getFontMetrics(); g2.drawString(f,W/2-fm.stringWidth(f)/2,H-18);
         }
 
