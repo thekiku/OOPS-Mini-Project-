@@ -18,7 +18,7 @@ public class Launcher extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(W, H);
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true);
         setContentPane(new HomePanel(this));
         setVisible(true);
     }
@@ -27,18 +27,6 @@ public class Launcher extends JFrame {
         setVisible(false);
         dispose();
         SwingUtilities.invokeLater(() -> new SolarSystemEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
-    }
-
-    void openCollisionSim() {
-        setVisible(false);
-        dispose();
-        SwingUtilities.invokeLater(() -> new CollisionEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
-    }
-
-    void openBuoyancySim() {
-        setVisible(false);
-        dispose();
-        SwingUtilities.invokeLater(() -> new BuoyancyEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -79,8 +67,8 @@ public class Launcher extends JFrame {
             sx = new float[STAR_COUNT]; sy = new float[STAR_COUNT];
             sz = new float[STAR_COUNT]; spd = new float[STAR_COUNT];
             for (int i = 0; i < STAR_COUNT; i++) {
-                sx[i] = rng.nextFloat() * W;
-                sy[i] = rng.nextFloat() * H;
+                sx[i] = rng.nextFloat();
+                sy[i] = rng.nextFloat();
                 sz[i] = rng.nextFloat() * 2.2f + 0.3f;
                 spd[i] = rng.nextFloat() * 0.15f + 0.02f;
             }
@@ -96,9 +84,14 @@ public class Launcher extends JFrame {
                 orbs.add(o);
             }
 
-            spaceCardX   = W / 2 - GAP / 2 - CARD_W;
-            collideCardX = W / 2 + GAP / 2;
-            cardY = H / 2 - CARD_H / 2 + 30;
+            updateLayout();
+
+            addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    updateLayout();
+                }
+            });
 
             addMouseMotionListener(new MouseMotionAdapter() {
                 public void mouseMoved(MouseEvent e) {
@@ -111,7 +104,7 @@ public class Launcher extends JFrame {
             addMouseListener(new MouseAdapter() {
                 public void mouseClicked(MouseEvent e) {
                     if (inCard(e.getX(), e.getY(), spaceCardX))   launcher.openSolarSim();
-                    if (inCard(e.getX(), e.getY(), collideCardX)) showComingSoon();
+                    if (inCard(e.getX(), e.getY(), collideCardX)) showCollisionBuoyancyMenu();
                 }
                 public void mouseExited(MouseEvent e) { mouseOnSpace = mouseOnCollide = false; }
             });
@@ -128,25 +121,41 @@ public class Launcher extends JFrame {
             animTimer.start();
         }
 
+        void updateLayout() {
+            int pw = getWidth() > 0 ? getWidth() : W;
+            int ph = getHeight() > 0 ? getHeight() : H;
+            spaceCardX = pw / 2 - GAP / 2 - CARD_W;
+            collideCardX = pw / 2 + GAP / 2;
+            cardY = ph / 2 - CARD_H / 2 + 30;
+        }
+
         boolean inCard(int mx, int my, int cx) {
             return mx >= cx && mx <= cx + CARD_W && my >= cardY && my <= cardY + CARD_H;
         }
 
         void showComingSoon() {
-            Object[] options = {"Collision Engine", "Buoyancy Engine", "Cancel"};
-            int choice = JOptionPane.showOptionDialog(
-                this,
-                "Choose which simulation to launch.",
-                "Collisions & Buoyancy",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                options,
-                options[0]
-            );
-
-            if (choice == 0) launcher.openCollisionSim();
-            else if (choice == 1) launcher.openBuoyancySim();
+            JDialog d = new JDialog((JFrame) SwingUtilities.getWindowAncestor(this), "Coming Soon", true);
+            JPanel dp = new JPanel(new BorderLayout());
+            dp.setBackground(new Color(8, 12, 30));
+            dp.setBorder(BorderFactory.createLineBorder(new Color(60, 80, 160), 1));
+            JLabel lbl = new JLabel("<html><div style='text-align:center;padding:24px 32px;'>"
+                + "<span style='font-size:18px;color:#a0c4ff'>Collisions & Buoyancy</span><br><br>"
+                + "<span style='color:#7090c0'>This module is under development.<br>Stay tuned for the next update!</span>"
+                + "</div></html>", SwingConstants.CENTER);
+            lbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            JButton ok = new JButton("Got it");
+            ok.setBackground(new Color(25, 50, 110));
+            ok.setForeground(new Color(160, 200, 255));
+            ok.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            ok.setFocusPainted(false);
+            ok.setBorder(BorderFactory.createEmptyBorder(8, 28, 8, 28));
+            ok.addActionListener(ev -> d.dispose());
+            JPanel btnPanel = new JPanel(); btnPanel.setBackground(new Color(8,12,30));
+            btnPanel.setBorder(BorderFactory.createEmptyBorder(0,0,16,0));
+            btnPanel.add(ok);
+            dp.add(lbl, BorderLayout.CENTER);
+            dp.add(btnPanel, BorderLayout.SOUTH);
+            d.setContentPane(dp); d.setSize(380, 200); d.setLocationRelativeTo(this); d.setVisible(true);
         }
 
         @Override protected void paintComponent(Graphics g) {
@@ -154,51 +163,56 @@ public class Launcher extends JFrame {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
-            drawBg(g2);
-            drawStars(g2);
-            drawOrbs(g2);
-            drawHeader(g2);
+            int pw = getWidth();
+            int ph = getHeight();
+            updateLayout();
+            drawBg(g2, pw, ph);
+            drawStars(g2, pw, ph);
+            drawOrbs(g2, pw, ph);
+            drawHeader(g2, pw, ph);
             drawCard(g2, spaceCardX,   cardY, true,  hoverSpace);
             drawCard(g2, collideCardX, cardY, false, hoverCollide);
-            drawFooter(g2);
+            drawFooter(g2, pw, ph);
         }
 
-        void drawBg(Graphics2D g2) {
-            g2.setPaint(new GradientPaint(W/2f,0,C_BG2,W/2f,H,C_BG1)); g2.fillRect(0,0,W,H);
+        void drawBg(Graphics2D g2, int pw, int ph) {
+            g2.setPaint(new GradientPaint(pw/2f,0,C_BG2,pw/2f,ph,C_BG1)); g2.fillRect(0,0,pw,ph);
             float br = (float)(280 + 20*Math.sin(pulse*0.4));
-            RadialGradientPaint bloom = new RadialGradientPaint(W/2f,H/2f,br,new float[]{0f,.45f,1f},
+            RadialGradientPaint bloom = new RadialGradientPaint(pw/2f,ph/2f,br,new float[]{0f,.45f,1f},
                 new Color[]{new Color(20,45,100,22),new Color(10,25,60,12),new Color(0,0,0,0)});
-            g2.setPaint(bloom); g2.fillOval(W/2-(int)br,H/2-(int)br,(int)(br*2),(int)(br*2));
+            g2.setPaint(bloom); g2.fillOval(pw/2-(int)br,ph/2-(int)br,(int)(br*2),(int)(br*2));
             // subtle grid
             g2.setStroke(new BasicStroke(0.4f)); g2.setColor(new Color(30,55,110,16));
-            for(int x=0;x<W;x+=55) g2.drawLine(x,0,x,H);
-            for(int y=0;y<H;y+=55) g2.drawLine(0,y,W,y);
+            for(int x=0;x<pw;x+=55) g2.drawLine(x,0,x,ph);
+            for(int y=0;y<ph;y+=55) g2.drawLine(0,y,pw,y);
             g2.setStroke(new BasicStroke(1));
             // edge accents
-            g2.setPaint(new GradientPaint(W*.15f,0,new Color(60,140,255,0),W*.5f,0,new Color(60,140,255,20)));
-            g2.fillRect(0,0,W,2);
-            g2.setPaint(new GradientPaint(W*.15f,H,new Color(60,140,255,0),W*.5f,H,new Color(60,140,255,16)));
-            g2.fillRect(0,H-2,W,2);
+            g2.setPaint(new GradientPaint(pw*.15f,0,new Color(60,140,255,0),pw*.5f,0,new Color(60,140,255,20)));
+            g2.fillRect(0,0,pw,2);
+            g2.setPaint(new GradientPaint(pw*.15f,ph,new Color(60,140,255,0),pw*.5f,ph,new Color(60,140,255,16)));
+            g2.fillRect(0,ph-2,pw,2);
         }
 
-        void drawStars(Graphics2D g2) {
+        void drawStars(Graphics2D g2, int pw, int ph) {
             for(int i=0;i<STAR_COUNT;i++){
                 float tw=.5f+.5f*(float)Math.sin(pulse*spd[i]*6+i);
                 float alpha=Math.max(.05f,Math.min(1f,tw*.85f));
                 int r=Math.max((int)(sz[i]*1.4f),1);
+                int x=(int)(sx[i]*pw);
+                int y=(int)(sy[i]*ph);
                 if(i%22==0){
-                    g2.setColor(new Color(200,220,255,(int)(alpha*55))); g2.fillOval((int)sx[i]-4,(int)sy[i]-4,8,8);
+                    g2.setColor(new Color(200,220,255,(int)(alpha*55))); g2.fillOval(x-4,y-4,8,8);
                     g2.setColor(new Color(255,255,255,(int)(alpha*38)));
-                    g2.drawLine((int)sx[i]-6,(int)sy[i],(int)sx[i]+6,(int)sy[i]);
-                    g2.drawLine((int)sx[i],(int)sy[i]-6,(int)sx[i],(int)sy[i]+6);
+                    g2.drawLine(x-6,y,x+6,y);
+                    g2.drawLine(x,y-6,x,y+6);
                 }
                 g2.setColor(new Color(1f,1f,1f,alpha));
-                g2.fillOval((int)sx[i],(int)sy[i],r,r);
+                g2.fillOval(x,y,r,r);
             }
         }
 
-        void drawOrbs(Graphics2D g2) {
-            double cx=W/2.0,cy=H/2.0;
+        void drawOrbs(Graphics2D g2, int pw, int ph) {
+            double cx=pw/2.0,cy=ph/2.0;
             Color[]oc={new Color(80,160,255),new Color(255,180,60),new Color(120,220,160)};
             for(Orb o:orbs){
                 double ox=cx+Math.cos(o.angle)*o.radius,oy=cy+Math.sin(o.angle)*o.radius*.38;
@@ -208,23 +222,23 @@ public class Launcher extends JFrame {
             }
         }
 
-        void drawHeader(Graphics2D g2) {
+        void drawHeader(Graphics2D g2, int pw, int ph) {
             g2.setFont(new Font("Segoe UI",Font.BOLD,12)); g2.setColor(new Color(90,150,220,185));
             String ey="✦  PHYSICS SIMULATION LAB  ✦"; FontMetrics fm=g2.getFontMetrics();
-            g2.drawString(ey,W/2-fm.stringWidth(ey)/2,62);
+            g2.drawString(ey,pw/2-fm.stringWidth(ey)/2,62);
 
             g2.setFont(new Font("Segoe UI",Font.BOLD,52));
-            String title="MISSION SELECT"; fm=g2.getFontMetrics(); int tx=W/2-fm.stringWidth(title)/2;
+            String title="MISSION SELECT"; fm=g2.getFontMetrics(); int tx=pw/2-fm.stringWidth(title)/2;
             g2.setColor(new Color(30,80,200,38)); g2.drawString(title,tx+2,127);
             g2.setColor(new Color(235,243,255)); g2.drawString(title,tx,125);
 
             g2.setFont(new Font("Segoe UI",Font.PLAIN,16)); g2.setColor(C_MUTED);
             String sub="Choose your simulation environment to begin"; fm=g2.getFontMetrics();
-            g2.drawString(sub,W/2-fm.stringWidth(sub)/2,156);
+            g2.drawString(sub,pw/2-fm.stringWidth(sub)/2,156);
 
             g2.setStroke(new BasicStroke(.8f));
-            g2.setPaint(new GradientPaint(W*.18f,172,new Color(60,120,255,0),W*.5f,172,new Color(60,120,255,55)));
-            g2.drawLine((int)(W*.18),(int)172,(int)(W*.82),(int)172);
+            g2.setPaint(new GradientPaint(pw*.18f,172,new Color(60,120,255,0),pw*.5f,172,new Color(60,120,255,55)));
+            g2.drawLine((int)(pw*.18),(int)172,(int)(pw*.82),(int)172);
             g2.setStroke(new BasicStroke(1));
         }
 
@@ -233,16 +247,16 @@ public class Launcher extends JFrame {
             // shadow
             g2.setColor(new Color(0,5,20,(int)(18+hover*32))); g2.fillRoundRect(x+4,y+8,w,h,22,22);
             // bg
-            Color ct=isSpace?new Color(12,22,55,228):new Color(18,14,40,208);
-            Color cb=isSpace?new Color(8,14,38,238) :new Color(12,8,28,238);
+            Color ct=new Color(12,22,55,228);
+            Color cb=new Color(8,14,38,238);
             g2.setPaint(new GradientPaint(x,y,ct,x,y+h,cb)); g2.fillRoundRect(x,y,w,h,22,22);
             // edge glow
-            Color e0=isSpace?new Color(55,110,220,65):new Color(100,70,180,48);
-            Color e1=isSpace?new Color(90,160,255,155):new Color(160,110,255,125);
+            Color e0=new Color(55,110,220,65);
+            Color e1=new Color(90,160,255,155);
             g2.setColor(blend(e0,e1,hover)); g2.setStroke(new BasicStroke(1.2f));
             g2.drawRoundRect(x,y,w,h,22,22); g2.setStroke(new BasicStroke(1));
             // top accent bar
-            Color bar=isSpace?new Color(70,150,255):new Color(140,90,255);
+            Color bar=new Color(70,150,255);
             g2.setColor(blend(new Color(bar.getRed(),bar.getGreen(),bar.getBlue(),55),new Color(bar.getRed(),bar.getGreen(),bar.getBlue(),135),hover));
             g2.fillRoundRect(x+20,y+14,w-40,4,4,4);
             // icon
@@ -255,7 +269,7 @@ public class Launcher extends JFrame {
             g2.setColor(blend(new Color(180,200,240),new Color(220,230,255),hover));
             g2.drawString(t2,x+w/2-fm.stringWidth(t2)/2,y+210);
             // description lines
-            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Restitution · friction · walls","Interactive launch controls"};
+            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Buoyancy & fluid dynamics","Coming soon — stay tuned!"};
             g2.setFont(new Font("Segoe UI",Font.PLAIN,13)); fm=g2.getFontMetrics(); g2.setColor(C_MUTED);
             for(int i=0;i<desc.length;i++) g2.drawString(desc[i],x+w/2-fm.stringWidth(desc[i])/2,y+240+i*21);
             // divider
@@ -263,8 +277,8 @@ public class Launcher extends JFrame {
             // button
             drawBtn(g2,x+w/2,y+338,isSpace,hover);
             // status badge
-            String badge="● AVAILABLE";
-            Color bc=isSpace?new Color(80,200,120):new Color(120,180,255);
+            String badge=isSpace?"● AVAILABLE":"◌ COMING SOON";
+            Color bc=isSpace?new Color(80,200,120):new Color(140,120,180);
             g2.setFont(new Font("Segoe UI",Font.BOLD,11)); fm=g2.getFontMetrics();
             g2.setColor(blend(new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),110),new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),215),hover));
             g2.drawString(badge,x+w/2-fm.stringWidth(badge)/2,y+h-14);
@@ -300,23 +314,23 @@ public class Launcher extends JFrame {
 
         void drawBtn(Graphics2D g2,int cx,int cy,boolean isSpace,float hover){
             int bw=180,bh=40,bx=cx-bw/2,by=cy-bh/2;
-            Color base=isSpace?new Color(35,75,165):new Color(55,40,105);
-            Color hov =isSpace?new Color(55,115,235):new Color(80,58,145);
+            Color base=new Color(35,75,165);
+            Color hov =new Color(55,115,235);
             Color col=blend(base,hov,hover);
             g2.setPaint(new GradientPaint(bx,by,col.brighter(),bx,by+bh,col)); g2.fillRoundRect(bx,by,bw,bh,12,12);
-            Color edgeBase=isSpace?new Color(80,130,220,78):new Color(130,90,200,68);
-            Color edgeHov =isSpace?new Color(100,170,255,175):new Color(150,110,230,138);
+            Color edgeBase=new Color(80,130,220,78);
+            Color edgeHov =new Color(100,170,255,175);
             g2.setColor(blend(edgeBase,edgeHov,hover)); g2.setStroke(new BasicStroke(1.2f)); g2.drawRoundRect(bx,by,bw,bh,12,12); g2.setStroke(new BasicStroke(1));
             String label="Launch Simulation →";
             g2.setFont(new Font("Segoe UI",Font.BOLD,14)); FontMetrics fm=g2.getFontMetrics();
-            Color tc=isSpace?new Color(180,215,255):new Color(160,140,210);
-            Color th=isSpace?new Color(235,245,255):new Color(200,180,240);
+            Color tc=new Color(180,215,255);
+            Color th=new Color(235,245,255);
             g2.setColor(blend(tc,th,hover)); g2.drawString(label,cx-fm.stringWidth(label)/2,by+bh/2+fm.getAscent()/2-1);
         }
 
-        void drawFooter(Graphics2D g2){
+        void drawFooter(Graphics2D g2, int pw, int ph){
             g2.setFont(new Font("Segoe UI",Font.PLAIN,12)); g2.setColor(new Color(65,90,140));
-            String f="Physics Lab  ·  Solar System Engine v2  ·  Collision + Buoyancy Engines";
+            String f="Physics Lab  ·  Solar System Engine v2  ·  Collisions & Buoyancy coming soon";
             FontMetrics fm=g2.getFontMetrics(); g2.drawString(f,W/2-fm.stringWidth(f)/2,H-18);
         }
 
