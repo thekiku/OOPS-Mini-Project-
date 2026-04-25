@@ -4,10 +4,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -208,7 +207,7 @@ public class SolarSystemEngine extends JFrame {
         hero.setFont(FN_H); hero.setForeground(new Color(228,240,255)); hero.setAlignmentX(CENTER_ALIGNMENT);
         JLabel sub=new JLabel("Solar System Physics Engine",SwingConstants.CENTER);
         sub.setFont(FN_S); sub.setForeground(new Color(160,190,230)); sub.setAlignmentX(CENTER_ALIGNMENT);
-        p.add(hero); p.add(Box.createVerticalStrut(2)); p.add(sub); p.add(Box.createVerticalStrut(8));
+        p.add(hero); p.add(javax.swing.Box.createVerticalStrut(2)); p.add(sub); p.add(javax.swing.Box.createVerticalStrut(8));
 
         // SUN card
         JPanel sunCard=card("☀  SUN");
@@ -245,7 +244,7 @@ public class SolarSystemEngine extends JFrame {
         // SIMULATION card
         JPanel simCard=card("⚙  SIMULATION");
         simCard.add(srow("Speed×10",speedSlider));
-        p.add(simCard); p.add(Box.createVerticalGlue());
+        p.add(simCard); p.add(javax.swing.Box.createVerticalGlue());
 
         // STATUS card
         JPanel stCard=card("◈  STATUS");
@@ -295,7 +294,7 @@ public class SolarSystemEngine extends JFrame {
         dock.setBackground(UI_BG);
         dock.setOpaque(true);
         dock.add(shell, BorderLayout.WEST);
-        dock.add(Box.createHorizontalStrut(CTRL_RIGHT_GUTTER), BorderLayout.EAST);
+        dock.add(javax.swing.Box.createHorizontalStrut(CTRL_RIGHT_GUTTER), BorderLayout.EAST);
         dock.setPreferredSize(new Dimension(CTRL_W + CTRL_RIGHT_GUTTER, 0));
         dock.setMinimumSize(new Dimension(CTRL_W + CTRL_RIGHT_GUTTER, 0));
         return dock;
@@ -320,7 +319,7 @@ public class SolarSystemEngine extends JFrame {
         JLabel title = new JLabel("  AI ASSISTANT  —  Ask anything about this simulation");
         title.setFont(new Font("Segoe UI",Font.BOLD,12));
         title.setForeground(new Color(130,190,255));
-        JButton toggle = new JButton("▼ Expand");
+        JButton toggle = new JButton("▲ Expand");
         toggle.setFont(new Font("Segoe UI",Font.BOLD,11));
         toggle.setForeground(new Color(100,160,220));
         toggle.setBackground(new Color(14,24,52));
@@ -421,7 +420,7 @@ public class SolarSystemEngine extends JFrame {
         toggle.addActionListener(e -> {
             chatCollapsed = !chatCollapsed;
             body.setVisible(!chatCollapsed);
-            toggle.setText(chatCollapsed ? "▼ Expand" : "▲ Collapse");
+            toggle.setText(chatCollapsed ? "▲ Expand" : "▼ Collapse");
             outer.revalidate();
             outer.repaint();
         });
@@ -461,8 +460,8 @@ public class SolarSystemEngine extends JFrame {
                 model = NVIDIA_MODEL_DEFAULT;
             }
 
-            java.net.URL url = new java.net.URL(NVIDIA_API_URL);
-            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            java.net.URI uri = java.net.URI.create(NVIDIA_API_URL);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(30000);
@@ -593,7 +592,7 @@ public class SolarSystemEngine extends JFrame {
         lbl.setBorder(BorderFactory.createEmptyBorder(0,0,4,0)); c.add(lbl);
         return c;
     }
-    Component gap(int h){ return Box.createVerticalStrut(h); }
+    Component gap(int h){ return javax.swing.Box.createVerticalStrut(h); }
     JPanel srow(String lbl,JSlider s){
         JPanel r=new JPanel(new BorderLayout(8,0)); r.setBackground(new Color(16,26,50,200));
         r.setMaximumSize(new Dimension(Integer.MAX_VALUE,36));
@@ -700,6 +699,19 @@ public class SolarSystemEngine extends JFrame {
 
         // texture cache
         Map<String,BufferedImage> texCache=new ConcurrentHashMap<>();
+        Map<String,Boolean> texResolveQueued=new ConcurrentHashMap<>();
+        static final String[] BASE_TEX_KEYS={"earth","mars","jupiter","saturn","venus","mercury","neptune","uranus","moon"};
+        static final Map<String,String> REMOTE_TEX_URLS=Map.ofEntries(
+            Map.entry("earth","https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg"),
+            Map.entry("mars","https://www.solarsystemscope.com/textures/download/2k_mars.jpg"),
+            Map.entry("jupiter","https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg"),
+            Map.entry("saturn","https://www.solarsystemscope.com/textures/download/2k_saturn.jpg"),
+            Map.entry("venus","https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg"),
+            Map.entry("mercury","https://www.solarsystemscope.com/textures/download/2k_mercury.jpg"),
+            Map.entry("neptune","https://www.solarsystemscope.com/textures/download/2k_neptune.jpg"),
+            Map.entry("uranus","https://www.solarsystemscope.com/textures/download/2k_uranus.jpg"),
+            Map.entry("moon","https://www.solarsystemscope.com/textures/download/2k_moon.jpg")
+        );
 
         SimPanel(){
             setBackground(Color.BLACK); setOpaque(true);
@@ -707,6 +719,7 @@ public class SolarSystemEngine extends JFrame {
             Random rng=new Random(); int ns=300;
             stX=new double[ns];stY=new double[ns];stR=new double[ns];stB=new double[ns];
             for(int i=0;i<ns;i++){stX[i]=rng.nextDouble();stY[i]=rng.nextDouble();stR[i]=rng.nextDouble()*1.4+0.3;stB[i]=rng.nextDouble()*0.5+0.2;}
+            primeTextureCache();
             addMouseListener(new MouseAdapter(){
                 public void mousePressed(MouseEvent e){requestFocusInWindow();drag0=e.getPoint();drag1=e.getPoint();}
                 public void mouseReleased(MouseEvent e){
@@ -1100,6 +1113,50 @@ public class SolarSystemEngine extends JFrame {
         }
 
         // ── textures ──────────────────────────────────────────────────────────
+        void primeTextureCache(){
+            for(String key:BASE_TEX_KEYS){
+                if("saturn".equals(key)||"neptune".equals(key)||"uranus".equals(key))
+                    downloadedTextureFile(key).delete();
+                texCache.put(key,buildQuickPlaceholderTex(key));
+                resolveTextureAsync(key);
+            }
+        }
+        void resolveTextureAsync(String key){
+            if(texResolveQueued.putIfAbsent(key,Boolean.TRUE)!=null) return;
+            Thread t=new Thread(() -> {
+                BufferedImage img=loadTextureImage(key);
+                if(img==null) img=loadDownloadedTextureFromDisk(key);
+                boolean fallback=false;
+                if(img==null){
+                    img=downloadPhotorealTexture(key);
+                }
+                if(img==null){
+                    img=buildTex(key);
+                    fallback=true;
+                }
+                texCache.put(key,img);
+                if(fallback){
+                    // Allow retry on later clicks in case network/files become available.
+                    texResolveQueued.remove(key);
+                }
+                SwingUtilities.invokeLater(this::repaint);
+            },"planet-texture-loader-"+key);
+            t.setDaemon(true);
+            t.start();
+        }
+        BufferedImage buildQuickPlaceholderTex(String key){
+            int w=160,h=80;
+            BufferedImage img=new BufferedImage(w,h,BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g=img.createGraphics();
+            Color[] p=texPal(key);
+            g.setPaint(new GradientPaint(0,0,p[0],0,h,p[2]));
+            g.fillRect(0,0,w,h);
+            g.setColor(new Color(255,255,255,28));
+            g.drawLine(0,h/3,w,h/3);
+            g.drawLine(0,h*2/3,w,h*2/3);
+            g.dispose();
+            return img;
+        }
         String texKey(Body b){
             if(b.name!=null&&!b.name.isEmpty()){
                 String n=b.name.toLowerCase();
@@ -1125,8 +1182,112 @@ public class SolarSystemEngine extends JFrame {
         }
         BufferedImage getTex(Body b){
             String key=texKey(b);
-            if(!texCache.containsKey(key)) texCache.put(key,buildTex(key));
-            return texCache.get(key);
+            BufferedImage cached=texCache.get(key);
+            if(cached==null){
+                cached=buildQuickPlaceholderTex(key);
+                texCache.put(key,cached);
+            }
+            resolveTextureAsync(key);
+            return cached;
+        }
+        BufferedImage loadTextureImage(String key){
+            String[] relPaths={
+                "textures/"+key+".png",
+                "textures/"+key+".jpg",
+                "textures/"+key+".jpeg",
+                "assets/textures/"+key+".png",
+                "assets/textures/"+key+".jpg",
+                "assets/textures/"+key+".jpeg",
+                "images/"+key+".png",
+                "images/"+key+".jpg",
+                "images/"+key+".jpeg",
+                "src/backend/textures/"+key+".png",
+                "src/backend/textures/"+key+".jpg",
+                "src/backend/textures/"+key+".jpeg",
+                "src/frontend/textures/"+key+".png",
+                "src/frontend/textures/"+key+".jpg",
+                "src/frontend/textures/"+key+".jpeg"
+            };
+
+            // Try classpath resources first.
+            for(String rel:relPaths){
+                BufferedImage fromRes=readTextureFromResource("/"+rel);
+                if(fromRes!=null) return fromRes;
+            }
+
+            // Then try workspace-relative file paths.
+            for(String rel:relPaths){
+                File f=new File(rel);
+                if(!f.isFile()) continue;
+                BufferedImage fromFile=readTextureFromFile(f);
+                if(fromFile!=null) return fromFile;
+            }
+            return null;
+        }
+        File downloadedTextureFile(String key){
+            return new File("textures/cache/"+key+".png");
+        }
+        BufferedImage loadDownloadedTextureFromDisk(String key){
+            File f=downloadedTextureFile(key);
+            if(!f.isFile()) return null;
+            return readTextureFromFile(f);
+        }
+        void saveDownloadedTextureToDisk(String key,BufferedImage img){
+            if(img==null) return;
+            File f=downloadedTextureFile(key);
+            File parent=f.getParentFile();
+            if(parent!=null&&!parent.exists()) parent.mkdirs();
+            try{ ImageIO.write(img,"png",f); } catch(IOException ignored){}
+        }
+        BufferedImage downloadPhotorealTexture(String key){
+            String url=REMOTE_TEX_URLS.get(key);
+            if(url==null||url.isBlank()) return null;
+            try{
+                java.net.URLConnection conn=java.net.URI.create(url).toURL().openConnection();
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(15000);
+                conn.setRequestProperty("User-Agent","Mozilla/5.0");
+                try(InputStream is=conn.getInputStream()){
+                    BufferedImage img=normalizeTexture(ImageIO.read(is));
+                    if(img!=null) saveDownloadedTextureToDisk(key,img);
+                    return img;
+                }
+            } catch(Exception ignored){
+                return null;
+            }
+        }
+        BufferedImage readTextureFromResource(String resourcePath){
+            try(InputStream is=SolarSystemEngine.class.getResourceAsStream(resourcePath)){
+                if(is==null) return null;
+                return normalizeTexture(ImageIO.read(is));
+            } catch(IOException ignored){
+                return null;
+            }
+        }
+        BufferedImage readTextureFromFile(File file){
+            try{
+                return normalizeTexture(ImageIO.read(file));
+            } catch(IOException ignored){
+                return null;
+            }
+        }
+        BufferedImage normalizeTexture(BufferedImage src){
+            if(src==null||src.getWidth()<2||src.getHeight()<2) return null;
+            int sw=src.getWidth(),sh=src.getHeight();
+            int tw=sw,th=sh;
+            final int MAX_W=1024,MAX_H=512;
+            if(sw>MAX_W||sh>MAX_H){
+                double scale=Math.min((double)MAX_W/sw,(double)MAX_H/sh);
+                tw=Math.max(2,(int)Math.round(sw*scale));
+                th=Math.max(2,(int)Math.round(sh*scale));
+            }
+            BufferedImage out=new BufferedImage(tw,th,BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g=out.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY);
+            g.drawImage(src,0,0,tw,th,null);
+            g.dispose();
+            return out;
         }
         BufferedImage buildTex(String key){
             int w=1024,h=512; BufferedImage img=new BufferedImage(w,h,BufferedImage.TYPE_INT_ARGB);
@@ -1154,27 +1315,40 @@ public class SolarSystemEngine extends JFrame {
         }
         // FIX #12: safe spherical texture draw, guarded against zero-width source
         void drawSphere(Graphics2D g2,BufferedImage tex,double cx,double cy,double r,double spin){
+            if(tex==null||tex.getWidth()<2||tex.getHeight()<2||r<1) return;
             int rows=Math.max(80,(int)(r*1.2)),tw=tex.getWidth(),th=tex.getHeight();
+            double spinU=(spin*0.24)/(Math.PI*2.0);
             g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             for(int i=0;i<rows;i++){
                 double v=-1.0+(2.0*i)/(rows-1.0);
                 double rowHalf=Math.sqrt(Math.max(0,1-v*v))*r; if(rowHalf<0.8) continue;
                 int dy=(int)(cy+v*r);
                 double lat=Math.asin(Math.max(-1,Math.min(1,v)));
-                double uOff=((spin*.24)/(Math.PI*2)),u0=uOff+.5-rowHalf/r*.5,u1=uOff+.5+rowHalf/r*.5;
-                int sx0=Math.max(0,Math.min(tw-1,(int)Math.floor((u0-Math.floor(u0))*tw)));
-                int sx1=Math.max(1,Math.min(tw,(int)Math.ceil((u1-Math.floor(u1))*tw)));
+                double uSpan=(rowHalf/r)*0.5;
+                double u0=wrap01(spinU+0.5-uSpan),u1=wrap01(spinU+0.5+uSpan);
+                int sx0=Math.max(0,Math.min(tw-1,(int)Math.floor(u0*tw)));
+                int sx1=Math.max(1,Math.min(tw,(int)Math.ceil(u1*tw)));
                 int sy=Math.max(0,Math.min(th-1,(int)((lat/Math.PI+.5)*th)));
                 int dx0=(int)(cx-rowHalf),dx1=(int)(cx+rowHalf);
                 if(dx1<=dx0) continue;
-                if(sx0<sx1){
+                if(u0<=u1){
+                    if(sx1<=sx0) sx1=Math.min(tw,sx0+1);
                     g2.drawImage(tex,dx0,dy,dx1,dy+1,sx0,sy,Math.min(sx1+1,tw),Math.min(sy+1,th),null);
-                } else if(sx0>0){
-                    int mid=dx0+(int)((dx1-dx0)*(1.0-(double)sx0/tw));
-                    if(mid>dx0) g2.drawImage(tex,dx0,dy,mid,dy+1,sx0,sy,tw,Math.min(sy+1,th),null);
-                    if(dx1>mid&&sx1>0) g2.drawImage(tex,mid,dy,dx1,dy+1,0,sy,Math.min(sx1,tw),Math.min(sy+1,th),null);
+                } else {
+                    int leftSrcW=tw-sx0;
+                    int rightSrcW=sx1;
+                    int totalSrcW=leftSrcW+rightSrcW;
+                    if(totalSrcW<=0) continue;
+                    int leftDx1=dx0+(int)Math.round((dx1-dx0)*(leftSrcW/(double)totalSrcW));
+                    leftDx1=Math.max(dx0+1,Math.min(dx1-1,leftDx1));
+                    if(leftSrcW>0) g2.drawImage(tex,dx0,dy,leftDx1,dy+1,sx0,sy,tw,Math.min(sy+1,th),null);
+                    if(rightSrcW>0) g2.drawImage(tex,leftDx1,dy,dx1,dy+1,0,sy,Math.min(sx1,tw),Math.min(sy+1,th),null);
                 }
             }
+        }
+        double wrap01(double u){
+            u=u-Math.floor(u);
+            return u<0?u+1.0:u;
         }
 
         // ── tick ──────────────────────────────────────────────────────────────
@@ -1440,7 +1614,7 @@ public class SolarSystemEngine extends JFrame {
 
         void drawPulsar(Graphics2D g2,Body b){
             int x=(int)b.x,y=(int)b.y,r=(int)b.radius;
-            double t=System.currentTimeMillis()*.001,pulse=(Math.sin(b.pulsarPhase*2*Math.PI/b.pulsarPeriod)+1)/2.0;
+            double pulse=(Math.sin(b.pulsarPhase*2*Math.PI/b.pulsarPeriod)+1)/2.0;
             if(showTrails&&b.trail.size()>1){
                 g2.setStroke(new BasicStroke(Math.max(r*.35f,1f),BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
                 for(int i=1;i<b.trail.size();i++){g2.setColor(new Color(180,160,255,(int)((float)i/b.trail.size()*52)));Point2D.Double p0=b.trail.get(i-1),p1=b.trail.get(i);g2.drawLine((int)p0.x,(int)p0.y,(int)p1.x,(int)p1.y);}
