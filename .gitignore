@@ -1,2 +1,4 @@
 out/
 *.class
+textures/cache/
+.vscode/launch.json

@@ -144,16 +144,9 @@ javac -version
 
 Each module includes an embedded AI helper that calls the NVIDIA chat completions API.
 
-Environment variables:
-
-```bat
-set NVIDIA_API_KEY=your_key_here
-set NVIDIA_MODEL=meta/llama-3.1-8b-instruct
-```
-
 Notes:
-- If `NVIDIA_API_KEY` is not set, the app falls back to a local constant in code.
-- `NVIDIA_MODEL` is optional; defaults to `meta/llama-3.1-8b-instruct`.
+- The API key is configured in code for a smooth out-of-the-box experience.
+- The default model is `meta/llama-3.1-8b-instruct`.
 
 ## Textures (Solar System Engine)
 

@@ -1283,6 +1283,7 @@ public class BuoyancyEngine extends JFrame {
     // ── real NVIDIA API call ────────────────────────────────────────────────
     static final String NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
     static final String NVIDIA_MODEL_DEFAULT = "meta/llama-3.1-8b-instruct";
+    // Shared API key configured in SolarSystemEngine for consistent behavior.
     static final String NVIDIA_API_KEY = SolarSystemEngine.NVIDIA_API_KEY;
 
     static final String SYSTEM_PROMPT =
@@ -1298,7 +1299,7 @@ public class BuoyancyEngine extends JFrame {
                 apiKey = NVIDIA_API_KEY;
             }
             if (apiKey == null || apiKey.isBlank()) {
-                return "API key not set. Set NVIDIA_API_KEY environment variable or paste key in NVIDIA_API_KEY constant.";
+                return "Assistant is offline right now. You can still explore the simulation using the controls and sliders.";
             }
 
             String model = System.getenv("NVIDIA_MODEL");
@@ -1339,7 +1340,7 @@ public class BuoyancyEngine extends JFrame {
             String response = sb.toString();
 
             if (status >= 400) {
-                if (status == 401 || status == 403) return "API key invalid or missing. Set NVIDIA_API_KEY environment variable.";
+                if (status == 401 || status == 403) return "Assistant is offline right now. You can still explore the simulation using the controls and sliders.";
                 if (status == 429) return "Rate limit hit. Please wait a moment before asking again.";
                 return "API error " + status + ". Check your NVIDIA_API_KEY.";
             }
