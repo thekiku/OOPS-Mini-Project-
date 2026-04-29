@@ -9,6 +9,7 @@ public class CollisionEngine extends JFrame {
 
     // ─── constants ────────────────────────────────────────────────────────────
     static final int W = 1280, H = 820, CTRL_W = 300;
+    static final int CTRL_W_MIN = 240, CTRL_W_MAX = 360;
     static final double GRAVITY = 500.0;
 
     // ─── palette ──────────────────────────────────────────────────────────────
@@ -50,9 +51,9 @@ public class CollisionEngine extends JFrame {
         add(sim, BorderLayout.CENTER);
         add(buildCtrl(), BorderLayout.EAST);
         add(buildChatPanel(), BorderLayout.SOUTH);
-        Dimension scr = Toolkit.getDefaultToolkit().getScreenSize();
-        setSize(Math.min(W, scr.width), Math.min(H, scr.height));
-        setLocationRelativeTo(null);
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        Rectangle viewport = ge.getMaximumWindowBounds();
+        setBounds(viewport);
         setVisible(true);
     }
 
@@ -523,9 +524,19 @@ public class CollisionEngine extends JFrame {
     // CONTROL PANEL
     // ══════════════════════════════════════════════════════════════════════════
     JPanel buildCtrl(){
-        JPanel shell=new JPanel(new BorderLayout());
+        JPanel shell=new JPanel(new BorderLayout()){
+            @Override public Dimension getPreferredSize(){
+                Dimension base=super.getPreferredSize();
+                int viewportW=CollisionEngine.this.getWidth();
+                if(viewportW<=0){
+                    Rectangle viewport=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+                    viewportW=viewport.width;
+                }
+                int panelW=controlPanelWidth(viewportW);
+                return new Dimension(panelW, base.height>0?base.height:H);
+            }
+        };
         shell.setBackground(PANEL);
-        shell.setPreferredSize(new Dimension(CTRL_W,H));
         shell.setBorder(BorderFactory.createMatteBorder(0,1,0,0,new Color(35,55,130)));
 
         JPanel p=new JPanel(){
@@ -603,6 +614,10 @@ public class CollisionEngine extends JFrame {
         sc.getViewport().setOpaque(false);sc.setOpaque(false);
         shell.add(sc,BorderLayout.CENTER);
         return shell;
+    }
+
+    int controlPanelWidth(int viewportWidth){
+        return Math.max(CTRL_W_MIN, Math.min(CTRL_W_MAX, (int)Math.round(viewportWidth * 0.26)));
     }
 
     // ── AI chat panel ────────────────────────────────────────────────────────

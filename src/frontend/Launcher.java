@@ -7,7 +7,7 @@ import java.util.Random;
 
 public class Launcher extends JFrame {
 
-    static final int W = 1100, H = 700;
+    static final int W = 1100, H = 700; 
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(Launcher::new);

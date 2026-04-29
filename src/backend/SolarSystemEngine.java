@@ -432,7 +432,7 @@ public class SolarSystemEngine extends JFrame {
     static final String NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
     static final String NVIDIA_MODEL_DEFAULT = "meta/llama-3.1-8b-instruct";
     // Optional local placeholder: paste your NVIDIA key here, or set NVIDIA_API_KEY env var.
-    static final String NVIDIA_API_KEY = "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";
+    static final String NVIDIA_API_KEY = "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";
 
     static final String SYSTEM_PROMPT =
         "You are an expert assistant embedded inside a Java Swing Solar System Physics Engine simulation. " +
