@@ -336,7 +336,7 @@ public class Launcher extends JFrame {
             g2.setColor(blend(new Color(180,200,240),new Color(220,230,255),hover));
             g2.drawString(t2,x+w/2-fm.stringWidth(t2)/2,y+210);
             // description lines
-            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Buoyancy & fluid dynamics","Coming soon — stay tuned!"};
+            String[]desc=isSpace?new String[]{"Gravity · Orbits · Kepler","Black Holes · Spaghettification","Wormholes · Pulsars · Shuttle"}:new String[]{"Rigid body collisions","Buoyancy & fluid dynamics","Available now"};
             g2.setFont(new Font("Segoe UI",Font.PLAIN,13)); fm=g2.getFontMetrics(); g2.setColor(C_MUTED);
             for(int i=0;i<desc.length;i++) g2.drawString(desc[i],x+w/2-fm.stringWidth(desc[i])/2,y+240+i*21);
             // divider
@@ -344,11 +344,11 @@ public class Launcher extends JFrame {
             // button
             drawBtn(g2,x+w/2,y+338,isSpace,hover);
             // status badge
-            String badge=isSpace?"● AVAILABLE":"◌ COMING SOON";
-            Color bc=isSpace?new Color(80,200,120):new Color(140,120,180);
+            String badge="● AVAILABLE";
+            Color bc=new Color(80,200,120);
             g2.setFont(new Font("Segoe UI",Font.BOLD,11)); fm=g2.getFontMetrics();
             g2.setColor(blend(new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),110),new Color(bc.getRed(),bc.getGreen(),bc.getBlue(),215),hover));
-            g2.drawString(badge,x+w/2-fm.stringWidth(badge)/2,y+h-14);
+            g2.drawString(badge,x+w/2-fm.stringWidth(badge)/2,y+h-8);
         }
 
         void drawIcon(Graphics2D g2,int cx,int cy,boolean isSpace,float hover,float t){
@@ -397,7 +397,7 @@ public class Launcher extends JFrame {
 
         void drawFooter(Graphics2D g2, int pw, int ph){
             g2.setFont(new Font("Segoe UI",Font.PLAIN,12)); g2.setColor(new Color(65,90,140));
-            String f="Physics Lab  ·  Solar System Engine v2  ·  Collisions & Buoyancy coming soon";
+            String f="Physics Lab  ·  Solar System Engine v2  ·  Collisions & Buoyancy available";
             FontMetrics fm=g2.getFontMetrics(); g2.drawString(f,W/2-fm.stringWidth(f)/2,H-18);
         }
 

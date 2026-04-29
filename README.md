@@ -2,6 +2,14 @@
 
 A Java Swing based physics simulator made as a college mini project for Object Oriented Programming (OOP).
 
+## PPT Quick Summary
+
+- Three interactive modules: Solar System, Collision, and Buoyancy
+- Built with Java Swing/Java2D, modular OOP design
+- Real-time simulation controls and visual feedback
+- Optional AI assistant via NVIDIA API and optional planet textures
+- Windows-friendly run script with simple build steps
+
 This physics simulator has a main launcher with 3 simulation modules:
 - Solar System Physics Engine
 - Collision Physics Engine
@@ -15,6 +23,19 @@ The goal of this mini project is to visualize basic physics concepts in an inter
 - Inheritance/composition style design
 - Modular class based architecture
 
+## How the Physics Works (High Level)
+
+- Solar System: Newtonian gravity with $F=G\frac{m_1 m_2}{r^2}$, integrated each frame to update velocity and position.
+- Collisions: Momentum exchange using a coefficient of restitution, with optional gravity and wall constraints.
+- Buoyancy: Archimedes' principle with drag, surface tension, currents, and wave motion for realistic behavior.
+
+## Architecture Overview
+
+- Launcher handles navigation between modules
+- Each module is a standalone JFrame with its own simulation panel and controls
+- Common UI patterns: sliders, toggles, and real-time rendering loop
+- Rendering uses Java2D shapes, gradients, and animated draw cycles
+
 ## Features
 
 ### 1. Launcher
@@ -26,36 +47,54 @@ The goal of this mini project is to visualize basic physics concepts in an inter
 - Orbital motion simulation
 - Multiple celestial body types (planets, moons, shuttle, black hole, pulsar, wormhole, asteroids)
 - Interactive controls and status panel
+- Optional AI assistant (NVIDIA API)
+- Optional photoreal planet textures downloaded and cached locally
+- Planet close-up view with telemetry-like details
 
 ### 3. Collision Engine
 - Multi-body collision simulation
 - Tunable mass, velocity, elasticity/friction style controls
+- Kinetic energy readout and launch vectors
 - Real-time motion and collision visualization
+- Optional AI assistant (NVIDIA API)
 
 ### 4. Buoyancy Engine
 - Floating and sinking behavior based on density
 - Fluid controls (density, viscosity, water level, waves, turbulence)
+- Force arrows, flow field, and dynamic waves
 - Real-time force/flow style visual feedback
+- Optional AI assistant (NVIDIA API)
 
 ## Tech Stack
 
 - Language: Java
 - GUI: Java Swing + Java2D
 - Build/Run: javac + java (via batch script)
+- AI: NVIDIA API (OpenAI-compatible chat completions)
+
+## Java Concepts Used
+
+- Classes and objects for simulation entities
+- Encapsulation of state (mass, velocity, forces) inside each module
+- Inheritance/composition for UI panels and helpers
+- Event-driven programming with listeners and timers
+- Collections (lists, maps) for dynamic bodies and effects
 
 ## Folder Structure
 
 ```
-OOPS Mini Project 2nd sem/
+oops mini project/
 |-- run.bat
 |-- README.md
 |-- src/
-|   |-- frontend/
-|   |   |-- Launcher.java
 |   |-- backend/
 |   |   |-- SolarSystemEngine.java
+|   |-- frontend/
+|   |   |-- Launcher.java
 |   |   |-- CollisionEngine.java
 |   |   |-- BuoyancyEngine.java
+|-- textures/
+|   |-- cache/
 ```
 
 ## How to Run (Windows)
@@ -84,6 +123,7 @@ java -cp out Launcher
 
 - Java JDK 8 or higher
 - Windows Command Prompt or PowerShell
+- Internet connection for AI assistant and texture downloads (optional)
 
 To check Java:
 
@@ -99,6 +139,25 @@ javac -version
    - Solar System Physics Engine
    - Collisions and Buoyancy (then pick one)
 3. Use sliders/toggles/buttons in control panels to observe behavior changes.
+
+## AI Assistant (Optional)
+
+Each module includes an embedded AI helper that calls the NVIDIA chat completions API.
+
+Environment variables:
+
+```bat
+set NVIDIA_API_KEY=your_key_here
+set NVIDIA_MODEL=meta/llama-3.1-8b-instruct
+```
+
+Notes:
+- If `NVIDIA_API_KEY` is not set, the app falls back to a local constant in code.
+- `NVIDIA_MODEL` is optional; defaults to `meta/llama-3.1-8b-instruct`.
+
+## Textures (Solar System Engine)
+
+The Solar System engine can download photoreal planet textures from SolarSystemScope and cache them in `textures/cache/` for faster subsequent runs. If the textures are not available or cannot be downloaded, the app uses generated placeholders.
 
 ## Learning Outcomes
 
