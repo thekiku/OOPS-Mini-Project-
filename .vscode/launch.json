@@ -2,6 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "java",
+            "name": "CollisionEngine",
+            "request": "launch",
+            "mainClass": "CollisionEngine",
+            "projectName": "final repo mini project_e7b43318"
+        },
+        {
             "name": "Run Launcher",
             "type": "java",
             "request": "launch",
@@ -10,7 +17,9 @@
             "args": [],
             "console": "integratedTerminal",
             "preLaunchTask": "Build Project",
-            "classPaths": ["${workspaceFolder}/out"],
+            "classPaths": [
+                "${workspaceFolder}/out"
+            ],
             "modulePaths": []
         }
     ]

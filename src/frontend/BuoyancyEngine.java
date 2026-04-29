@@ -9,7 +9,10 @@ public class BuoyancyEngine extends JFrame {
 
     static final int W = 1200, H = 800;
     static final int CTRL_W = 320;
-    static final double G_ACCEL = 400.0;
+    static final double EARTH_GRAVITY_MPS2 = 9.81;
+    static final double PIXELS_PER_METER = 100.0;
+    static final double AIR_DRAG_COEFF = 0.06;
+    static final double G_ACCEL = EARTH_GRAVITY_MPS2 * PIXELS_PER_METER;
 
     static final Color BG_DEEP    = new Color(4,  6, 18);
     static final Color BG_MID     = new Color(8, 12, 28);
@@ -30,6 +33,10 @@ public class BuoyancyEngine extends JFrame {
 
     SimPanel sim;
     Runnable onBack;
+    JTextArea chatDisplay;
+    JTextField chatInput;
+    boolean chatCollapsed = true;
+    JPanel chatPanelRef;
 
     public static void main(String[] args) { SwingUtilities.invokeLater(BuoyancyEngine::new); }
     public BuoyancyEngine() { this(null); }
@@ -42,6 +49,7 @@ public class BuoyancyEngine extends JFrame {
         sim = new SimPanel();
         add(sim, BorderLayout.CENTER);
         add(buildControlPanel(), BorderLayout.EAST);
+        add(buildChatPanel(), BorderLayout.SOUTH);
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         Rectangle scr = ge.getMaximumWindowBounds();
         setSize(Math.min(W, scr.width), Math.min(H, scr.height));
@@ -266,15 +274,18 @@ public class BuoyancyEngine extends JFrame {
 
         void resetPositions() {
             int pw=getWidth()>10?getWidth():W-CTRL_W;
-            int ph=getHeight()>10?getHeight():H;
             int tankLeft=tankMargin, tankW=pw-tankMargin*2;
+            int tankTop=tankMargin;
             int[] xs={tankLeft+tankW/5, tankLeft+2*tankW/5, tankLeft+3*tankW/5, tankLeft+4*tankW/5};
-            double tankH=ph-tankMargin*2;
-            double surfY=ph-tankMargin-tankH*waterLevel;
             for(int i=0;i<objects.length;i++){
                 FloatObj o=objects[i];
-                o.x=xs[i]; o.y=surfY-o.height*0.5-20;
-                o.vx=o.driftBias; o.vy=0; o.trail.clear(); o.squishX=o.squishY=1; o.wasSubmerged=false;
+                o.x=xs[i];
+                o.y=tankTop+o.height*0.55+8+i*2;
+                o.vx=o.driftBias*0.05;
+                o.vy=0;
+                o.trail.clear();
+                o.squishX=o.squishY=1;
+                o.wasSubmerged=false;
             }
         }
 
@@ -334,12 +345,8 @@ public class BuoyancyEngine extends JFrame {
                 o.x=tankLeft+lane*(tankRight-tankLeft);
                 o.y=tankTop+o.height*0.55+8+laneIdx*2;
 
-                double ratio=o.density/Math.max(1.0,fluidDensity);
-                double massKick=16+Math.sqrt(o.mass)*9;
-                double densityKick=8+Math.max(0,ratio-0.82)*72;
-
-                o.vx=o.driftBias*0.22;
-                o.vy=massKick+densityKick;
+                o.vx=o.driftBias*0.05;
+                o.vy=0;
                 o.trail.clear();
                 o.wasSubmerged=false;
                 o.squishX=o.squishY=1;
@@ -401,9 +408,9 @@ public class BuoyancyEngine extends JFrame {
             for(FloatObj o:objects){
                 if(!o.active) continue;
                 o.x=tankLeft+o.width/2+10+Math.random()*(tankRight-tankLeft-o.width-20);
-                o.y=tankTop+20+Math.random()*90;
+                o.y=tankTop+o.height*0.55+8+Math.random()*50;
                 o.vx=o.driftBias+(Math.random()-0.5)*90;
-                o.vy=60+Math.random()*150;
+                o.vy=0;
                 o.trail.clear();
                 o.wasSubmerged=false;
             }
@@ -435,63 +442,70 @@ public class BuoyancyEngine extends JFrame {
 
                 double frac = o.submergedFraction(waterSurfY, tankH);
                 double displacedVol = o.mass / Math.max(1.0, o.density);
+                double centreRelSurf = o.y - waterSurfY;
 
-                // buoyancy: F = rho_fluid * g * V_submerged
-                double Fb = fluidDensity * g * displacedVol * frac;
+                // In air: free fall under earth gravity before buoyancy engages.
+                if(frac <= 0.001){
+                    o.vy += g * simDt;
+                    o.vx *= Math.max(0,1 - AIR_DRAG_COEFF * simDt);
+                    o.vy *= Math.max(0,1 - AIR_DRAG_COEFF * simDt * 0.6);
+                } else {
+                    // buoyancy: F = rho_fluid * g * V_submerged
+                    double Fb = fluidDensity * g * displacedVol * frac;
 
-                // gravity: F = m * g
-                double Fg = o.mass * g;
+                    // gravity: F = m * g
+                    double Fg = o.mass * g;
 
-                // net vertical force in screen space (positive y is downward)
-                double Fnet = Fg - Fb;
+                    // net vertical force in screen space (positive y is downward)
+                    double Fnet = Fg - Fb;
 
-                // Added-mass term: moving fluid adds inertia and reduces overshoot.
-                double addedMass = fluidDensity * displacedVol * (0.35 + 0.45 * frac);
-                double effectiveMass = o.mass + addedMass;
+                    // Added-mass term: moving fluid adds inertia and reduces overshoot.
+                    double addedMass = fluidDensity * displacedVol * (0.35 + 0.45 * frac);
+                    double effectiveMass = o.mass + addedMass;
 
-                // viscous drag (proportional to velocity, stronger when submerged)
-                double dragMassFactor = 1.0 / (0.65 + Math.sqrt(o.mass));
-                double dragH = viscosity * (1 + frac * 3) * dragMassFactor;
-                double dragV = viscosity * (1 + frac * 3) * dragMassFactor;
+                    // viscous drag (proportional to velocity, stronger when submerged)
+                    double dragMassFactor = 1.0 / (0.65 + Math.sqrt(o.mass));
+                    double dragH = viscosity * (1 + frac * 3) * dragMassFactor;
+                    double dragV = viscosity * (1 + frac * 3) * dragMassFactor;
 
-                o.vx *= Math.max(0,1 - dragH * simDt * 8);
-                o.vy += (Fnet / effectiveMass) * simDt;
-                o.vy *= Math.max(0,1 - dragV * simDt * 6);
+                    o.vx *= Math.max(0,1 - dragH * simDt * 8);
+                    o.vy += (Fnet / effectiveMass) * simDt;
+                    o.vy *= Math.max(0,1 - dragV * simDt * 6);
+
+                    // fluid current tries to pull objects toward a flow velocity
+                    double flowTarget = currentStrength * (0.35 + frac * 0.9);
+                    o.vx += (flowTarget - o.vx) * frac * simDt * 1.2;
+
+                    // surface tension: small snap near waterline
+                    if(Math.abs(centreRelSurf) < o.height*0.6 && frac>0.05 && frac<0.95){
+                        o.vy -= centreRelSurf * surfaceTension * simDt * 0.28;
+                        o.vy *= 0.988;
+                    }
+
+                    // Strong upward braking near the interface prevents "rocket" jumps.
+                    if(o.vy<0 && centreRelSurf<o.height*0.35){
+                        double nearSurface = 1.0 - Math.min(1.0, Math.max(0.0, (centreRelSurf + o.height*0.9) / (o.height*1.2)));
+                        if(nearSurface>0){
+                            double maxUpSpeed = -120 - 100*frac;
+                            o.vy = Math.max(o.vy, maxUpSpeed);
+                            o.vy *= Math.max(0.42, 1.0 - nearSurface*0.5);
+                        }
+                    }
+
+                    if(frac<0.08){
+                        o.vx *= Math.max(0,1 - simDt*0.7);
+                    }
+
+                    // turbulence
+                    if(turbulence && turbAmp>0){
+                        o.vx += (Math.random()-0.5)*turbAmp*simDt*80*frac;
+                        o.vy += (Math.random()-0.5)*turbAmp*simDt*40*frac;
+                    }
+                }
 
                 // safety clamp keeps energy bounded and prevents numerical explosions.
                 o.vx=Math.max(-520,Math.min(520,o.vx));
                 o.vy=Math.max(-620,Math.min(620,o.vy));
-
-                // fluid current tries to pull objects toward a flow velocity
-                double flowTarget = currentStrength * (0.35 + frac * 0.9);
-                o.vx += (flowTarget - o.vx) * frac * simDt * 1.2;
-
-                // surface tension: small snap near waterline
-                double centreRelSurf = o.y - waterSurfY;
-                if(Math.abs(centreRelSurf) < o.height*0.6 && frac>0.05 && frac<0.95){
-                    o.vy -= centreRelSurf * surfaceTension * simDt * 0.28;
-                    o.vy *= 0.988;
-                }
-
-                // Strong upward braking near the interface prevents "rocket" jumps.
-                if(o.vy<0 && centreRelSurf<o.height*0.35){
-                    double nearSurface = 1.0 - Math.min(1.0, Math.max(0.0, (centreRelSurf + o.height*0.9) / (o.height*1.2)));
-                    if(nearSurface>0){
-                        double maxUpSpeed = -120 - 100*frac;
-                        o.vy = Math.max(o.vy, maxUpSpeed);
-                        o.vy *= Math.max(0.42, 1.0 - nearSurface*0.5);
-                    }
-                }
-
-                if(frac<0.08){
-                    o.vy *= Math.max(0,1 - simDt*1.8);
-                }
-
-                // turbulence
-                if(turbulence && turbAmp>0){
-                    o.vx += (Math.random()-0.5)*turbAmp*simDt*80*frac;
-                    o.vy += (Math.random()-0.5)*turbAmp*simDt*40*frac;
-                }
 
                 o.x += o.vx*simDt;
                 o.y += o.vy*simDt;
@@ -1147,6 +1161,251 @@ public class BuoyancyEngine extends JFrame {
         scroll.getViewport().setOpaque(false);scroll.setOpaque(false);
         outer.add(scroll,BorderLayout.CENTER);
         return outer;
+    }
+
+    // ── AI chat panel ────────────────────────────────────────────────────────
+    JPanel buildChatPanel(){
+        JPanel outer = new JPanel(new BorderLayout());
+        outer.setBackground(new Color(5,8,20));
+        outer.setBorder(BorderFactory.createMatteBorder(1,0,0,0,new Color(40,65,130)));
+        chatPanelRef = outer;
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(9,15,35));
+        header.setBorder(BorderFactory.createEmptyBorder(6,14,6,14));
+        JLabel title = new JLabel("  AI ASSISTANT  —  Ask anything about buoyancy and fluids");
+        title.setFont(new Font("Segoe UI",Font.BOLD,12));
+        title.setForeground(new Color(130,190,255));
+        JButton toggle = new JButton("▲ Expand");
+        toggle.setFont(new Font("Segoe UI",Font.BOLD,11));
+        toggle.setForeground(new Color(100,160,220));
+        toggle.setBackground(new Color(14,24,52));
+        toggle.setBorder(BorderFactory.createEmptyBorder(3,10,3,10));
+        toggle.setFocusPainted(false);
+        toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        header.add(title,BorderLayout.WEST);
+        header.add(toggle,BorderLayout.EAST);
+
+        chatDisplay = new JTextArea();
+        chatDisplay.setEditable(false);
+        chatDisplay.setLineWrap(true);
+        chatDisplay.setWrapStyleWord(true);
+        chatDisplay.setBackground(new Color(7,11,25));
+        chatDisplay.setForeground(new Color(210,225,250));
+        chatDisplay.setFont(new Font("Segoe UI",Font.PLAIN,13));
+        chatDisplay.setBorder(BorderFactory.createEmptyBorder(10,14,10,14));
+        chatDisplay.setText("Assistant: Hello! I'm here to help you understand this Buoyancy Physics Engine.\n"
+            + "Ask me about: Archimedes' principle, density vs fluid density, drag, surface tension, waves,\n"
+            + "turbulence, and why objects float, sink, or oscillate in this simulation.\n");
+
+        JScrollPane chatScroll = new JScrollPane(chatDisplay);
+        chatScroll.setBorder(BorderFactory.createEmptyBorder());
+        chatScroll.setBackground(new Color(7,11,25));
+        chatScroll.setPreferredSize(new Dimension(0,88));
+        chatScroll.getVerticalScrollBar().setBackground(new Color(12,20,44));
+
+        JPanel inputRow = new JPanel(new BorderLayout(8,0));
+        inputRow.setBackground(new Color(9,15,35));
+        inputRow.setBorder(BorderFactory.createEmptyBorder(8,12,8,12));
+
+        chatInput = new JTextField();
+        chatInput.setBackground(new Color(14,22,48));
+        chatInput.setForeground(new Color(220,232,255));
+        chatInput.setCaretColor(new Color(100,180,255));
+        chatInput.setFont(new Font("Segoe UI",Font.PLAIN,13));
+        chatInput.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(45,70,130),1),
+            BorderFactory.createEmptyBorder(6,10,6,10)));
+
+        JButton sendBtn = new JButton("Send ↵");
+        sendBtn.setFont(new Font("Segoe UI",Font.BOLD,12));
+        sendBtn.setBackground(new Color(30,60,120));
+        sendBtn.setForeground(new Color(180,215,255));
+        sendBtn.setBorder(BorderFactory.createEmptyBorder(7,16,7,16));
+        sendBtn.setFocusPainted(false);
+        sendBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        inputRow.add(chatInput,BorderLayout.CENTER);
+        inputRow.add(sendBtn,BorderLayout.EAST);
+
+        JPanel body = new JPanel(new BorderLayout());
+        body.setBackground(new Color(7,11,25));
+        body.add(chatScroll,BorderLayout.CENTER);
+        body.add(inputRow,BorderLayout.SOUTH);
+        body.setVisible(!chatCollapsed);
+
+        outer.add(header,BorderLayout.NORTH);
+        outer.add(body,BorderLayout.CENTER);
+
+        Runnable sendAction = () -> {
+            String q = chatInput.getText().trim();
+            if(q.isEmpty()) return;
+            chatDisplay.append("\nYou: " + q + "\n");
+            chatDisplay.append("Assistant: thinking...\n");
+            chatDisplay.setCaretPosition(chatDisplay.getDocument().getLength());
+            chatInput.setText("");
+            sendBtn.setEnabled(false);
+            String question = q;
+            new Thread(() -> {
+                String reply = callNvidiaAPI(question);
+                SwingUtilities.invokeLater(() -> {
+                    String txt = chatDisplay.getText();
+                    int idx = txt.lastIndexOf("Assistant: thinking...");
+                    if(idx >= 0){
+                        try {
+                            chatDisplay.getDocument().remove(idx, "Assistant: thinking...".length());
+                            chatDisplay.getDocument().insertString(idx, "Assistant: " + reply, null);
+                        } catch(Exception ex){
+                            chatDisplay.append("Assistant: " + reply + "\n");
+                        }
+                    } else {
+                        chatDisplay.append("Assistant: " + reply + "\n");
+                    }
+                    chatDisplay.setCaretPosition(chatDisplay.getDocument().getLength());
+                    sendBtn.setEnabled(true);
+                });
+            }, "nvidia-chat").start();
+        };
+        sendBtn.addActionListener(e -> sendAction.run());
+        chatInput.addActionListener(e -> sendAction.run());
+
+        toggle.addActionListener(e -> {
+            chatCollapsed = !chatCollapsed;
+            body.setVisible(!chatCollapsed);
+            toggle.setText(chatCollapsed ? "▲ Expand" : "▼ Collapse");
+            outer.revalidate();
+            outer.repaint();
+        });
+
+        return outer;
+    }
+
+    // ── real NVIDIA API call ────────────────────────────────────────────────
+    static final String NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+    static final String NVIDIA_MODEL_DEFAULT = "meta/llama-3.1-8b-instruct";
+    static final String NVIDIA_API_KEY = SolarSystemEngine.NVIDIA_API_KEY;
+
+    static final String SYSTEM_PROMPT =
+        "You are an expert assistant embedded inside a Java Swing Buoyancy Physics Engine simulation. " +
+        "Answer questions about Archimedes' principle, density, buoyant force, drag, surface tension, currents, turbulence, and wave behavior. " +
+        "Explain how the controls affect object motion using concise technical language. Keep answers under 3 sentences. " +
+        "If a question is unrelated to physics or this simulation, gently redirect.";
+
+    String callNvidiaAPI(String userMessage) {
+        try {
+            String apiKey = System.getenv("NVIDIA_API_KEY");
+            if ((apiKey == null || apiKey.isBlank()) && !NVIDIA_API_KEY.isBlank()) {
+                apiKey = NVIDIA_API_KEY;
+            }
+            if (apiKey == null || apiKey.isBlank()) {
+                return "API key not set. Set NVIDIA_API_KEY environment variable or paste key in NVIDIA_API_KEY constant.";
+            }
+
+            String model = System.getenv("NVIDIA_MODEL");
+            if (model == null || model.isBlank()) {
+                model = NVIDIA_MODEL_DEFAULT;
+            }
+
+            java.net.URI uri = java.net.URI.create(NVIDIA_API_URL);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) uri.toURL().openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey.trim());
+
+            String body = "{"
+                + "\"model\":" + jsonString(model) + ","
+                + "\"temperature\":0.4,"
+                + "\"max_tokens\":300,"
+                + "\"messages\":["
+                + "{\"role\":\"system\",\"content\":" + jsonString(SYSTEM_PROMPT) + "},"
+                + "{\"role\":\"user\",\"content\":" + jsonString(userMessage) + "}"
+                + "]"
+                + "}";
+
+            try (java.io.OutputStream os = conn.getOutputStream()) {
+                os.write(body.getBytes("UTF-8"));
+            }
+
+            int status = conn.getResponseCode();
+            java.io.InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream();
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            String response = sb.toString();
+
+            if (status >= 400) {
+                if (status == 401 || status == 403) return "API key invalid or missing. Set NVIDIA_API_KEY environment variable.";
+                if (status == 429) return "Rate limit hit. Please wait a moment before asking again.";
+                return "API error " + status + ". Check your NVIDIA_API_KEY.";
+            }
+
+            String text = extractNvidiaAssistantText(response);
+            if (text == null || text.isBlank()) return "Could not parse response.";
+            return text;
+
+        } catch (java.net.SocketTimeoutException e) {
+            return "Request timed out. Check your internet connection.";
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    static String extractNvidiaAssistantText(String response) {
+        int msgIdx = response.indexOf("\"message\"");
+        int startSearch = msgIdx >= 0 ? msgIdx : 0;
+        int contentIdx = response.indexOf("\"content\":", startSearch);
+        if (contentIdx < 0) {
+            return null;
+        }
+        int valueStart = contentIdx + "\"content\":".length();
+        return parseJsonString(response, valueStart);
+    }
+
+    static String parseJsonString(String src, int startIndex) {
+        int i = startIndex;
+        while (i < src.length() && Character.isWhitespace(src.charAt(i))) i++;
+        if (i >= src.length() || src.charAt(i) != '"') return null;
+        i++;
+
+        StringBuilder out = new StringBuilder();
+        boolean esc = false;
+        while (i < src.length()) {
+            char c = src.charAt(i++);
+            if (esc) {
+                switch (c) {
+                    case 'n': out.append('\n'); break;
+                    case 't': out.append('\t'); break;
+                    case 'r': out.append('\r'); break;
+                    case '"': out.append('"'); break;
+                    case '\\': out.append('\\'); break;
+                    case '/': out.append('/'); break;
+                    default: out.append(c); break;
+                }
+                esc = false;
+            } else if (c == '\\') {
+                esc = true;
+            } else if (c == '"') {
+                return out.toString();
+            } else {
+                out.append(c);
+            }
+        }
+        return null;
+    }
+
+    static String jsonString(String s) {
+        return "\"" + s
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            + "\"";
     }
 
     // ── helpers ───────────────────────────────────────────────────────────
