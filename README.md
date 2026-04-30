@@ -15,6 +15,10 @@ The goal of this mini project is to visualize basic physics concepts in an inter
 - Inheritance/composition style design
 - Modular class based architecture
 
+## Problem Statement
+
+Design and implement an interactive physics simulation suite using Java and Object-Oriented Programming principles. Traditional classroom teaching often leaves students struggling to visualize abstract physics concepts, so the system must provide real-time, interactive visualization to make those ideas concrete. The system should include a launcher and multiple modules (solar system, collisions, buoyancy), each offering user controls to modify parameters and a clear separation of concerns between UI and physics logic. The project should demonstrate core OOP concepts (encapsulation, abstraction, inheritance/composition) while delivering engaging features and smooth rendering.
+
 ## How the Physics Works (High Level)
 
 - Solar System: Newtonian gravity with $F=G\frac{m_1 m_2}{r^2}$, integrated each frame to update velocity and position.
