@@ -2,14 +2,6 @@
 
 A Java Swing based physics simulator made as a college mini project for Object Oriented Programming (OOP).
 
-## PPT Quick Summary
-
-- Three interactive modules: Solar System, Collision, and Buoyancy
-- Built with Java Swing/Java2D, modular OOP design
-- Real-time simulation controls and visual feedback
-- Optional AI assistant via NVIDIA API and optional planet textures
-- Windows-friendly run script with simple build steps
-
 This physics simulator has a main launcher with 3 simulation modules:
 - Solar System Physics Engine
 - Collision Physics Engine
@@ -167,13 +159,11 @@ The Solar System engine can download photoreal planet textures from SolarSystemS
 
 ## Author
 
-- Salil Regi
-- Shaheer Sheikh
-- Shaurya Pandey
-- Tejaswi D
+- SHAURYA PANDEY - BL.SC.U4CSE25135
+- TEJASWI D- BL.SC.U4CSE25139
+- SALIL REGI - BL.SC.U4CSE25133
+- SHAHEER SHEIKH - BL.SC.U4CSE25167
 - Course: Object Oriented Programming
 - Semester: 2nd Sem
 
-## License
 
-This project is for educational/academic use.
