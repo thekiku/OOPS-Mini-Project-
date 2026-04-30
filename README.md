@@ -159,13 +159,11 @@ The Solar System engine can download photoreal planet textures from SolarSystemS
 
 ## Author
 
-- Salil Regi
-- Shaheer Sheikh
-- Shaurya Pandey
-- Tejaswi D
+- SHAURYA PANDEY - BL.SC.U4CSE25135
+- TEJASWI D- BL.SC.U4CSE25139
+- SALIL REGI - BL.SC.U4CSE25133
+- SHAHEER SHEIKH - BL.SC.U4CSE25167
 - Course: Object Oriented Programming
 - Semester: 2nd Sem
 
-## License
 
-This project is for educational/academic use.
