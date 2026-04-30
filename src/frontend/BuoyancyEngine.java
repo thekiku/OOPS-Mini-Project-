@@ -1,12 +1,17 @@
+// Swing UI
 import javax.swing.*;
+// AWT drawing, events, and geometry
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+// Collections and utilities
 import java.util.*;
 import java.util.List;
 
+// Buoyancy simulation window: UI + water tank physics.
 public class BuoyancyEngine extends JFrame {
 
+    // Screen sizing and physics scaling constants.
     static final int W = 1200, H = 800;
     static final int CTRL_W = 320;
     static final double EARTH_GRAVITY_MPS2 = 9.81;
@@ -60,6 +65,7 @@ public class BuoyancyEngine extends JFrame {
     // ════════════════════════════════════════════════════════════════════════
     //  FLOATING OBJECT
     // ════════════════════════════════════════════════════════════════════════
+    // Physics body that moves through the fluid (mass, density, size).
     static class FloatObj {
         int id;
         double x, y;          // centre
@@ -117,6 +123,7 @@ public class BuoyancyEngine extends JFrame {
     // ════════════════════════════════════════════════════════════════════════
     //  BUBBLE / SPLASH PARTICLE
     // ════════════════════════════════════════════════════════════════════════
+    // Visual-only particles for surface splashes and bubbles.
     static class Bubble {
         double x, y, vx, vy, r, life, maxLife;
         boolean isSplash;
@@ -154,6 +161,7 @@ public class BuoyancyEngine extends JFrame {
     // ════════════════════════════════════════════════════════════════════════
     //  SIMULATION PANEL
     // ════════════════════════════════════════════════════════════════════════
+    // Owns the physics loop, rendering, and user interaction for buoyancy.
     class SimPanel extends JPanel {
         FloatObj[] objects;
         List<Bubble> bubbles = new ArrayList<>();

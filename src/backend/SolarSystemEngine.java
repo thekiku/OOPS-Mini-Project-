@@ -1,24 +1,32 @@
+// Swing UI
 import javax.swing.*;
+// Image IO
 import javax.imageio.ImageIO;
+// AWT drawing, events, and geometry
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
+// File and resource loading
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+// Collections and concurrency
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+// Screen sizing helpers
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 
+// Main window that hosts the solar system simulation UI and physics loop.
 public class SolarSystemEngine extends JFrame {
 
     // ── constants ─────────────────────────────────────────────────────────────
+    // Window sizing + core physics parameters.
     static final int W = 1180, H = 760;
     static final int CTRL_W = 380;
     static final int CTRL_RIGHT_GUTTER = 0;
@@ -26,6 +34,7 @@ public class SolarSystemEngine extends JFrame {
     static final int MAX_TRAIL = 150;
 
     // ── ui palette ────────────────────────────────────────────────────────────
+    // Theme colors and fonts for the command panel + chat UI.
     static final Color UI_BG        = new Color(7, 11, 26);
     static final Color UI_CARD_T    = new Color(18, 30, 60, 230);
     static final Color UI_CARD_B    = new Color(10, 18, 42, 230);
@@ -41,6 +50,7 @@ public class SolarSystemEngine extends JFrame {
     static final Font  FN_S         = new Font("Segoe UI", Font.PLAIN,  12);
 
     // ── simulation palette ────────────────────────────────────────────────────
+    // Planet color triplets used for shading/lighting.
     static final Color[][] PAL = {
         {new Color(85,147,219),  new Color(37,110,200),  new Color(12,60,130)},
         {new Color(220,110,80),  new Color(200,70,40),   new Color(130,40,15)},
@@ -53,9 +63,11 @@ public class SolarSystemEngine extends JFrame {
     };
 
     // ── body types ────────────────────────────────────────────────────────────
+    // All entity categories supported in the simulation.
     enum BT { PLANET, MOON, SHUTTLE, BLACK_HOLE, PULSAR, SUN, WORMHOLE, ASTEROID }
 
     // ── body ──────────────────────────────────────────────────────────────────
+    // Core physics entity: position, velocity, mass, orbit parameters, visuals.
     static class Body {
         BT type;
         double x, y, vx, vy, mass, radius;
@@ -104,6 +116,7 @@ public class SolarSystemEngine extends JFrame {
     }
 
     // ── particle ──────────────────────────────────────────────────────────────
+    // Small visual particle for explosions and dust effects.
     static class Particle{
         double x,y,vx,vy; float sz; Color c; int life,maxLife;
         Particle(double x,double y,Color c){this(x,y,c,(Math.random()-.5)*6,(Math.random()-.5)*6,1.5f);}
@@ -123,6 +136,7 @@ public class SolarSystemEngine extends JFrame {
     }
 
     // ── state ─────────────────────────────────────────────────────────────────
+    // Top-level UI controls and the simulation panel instance.
     SimPanel sim;
     JLabel statusLabel;
     JSlider sunMassSlider,sunRadSlider,speedSlider,pSizeSlider,eccSlider;

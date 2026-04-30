@@ -1,10 +1,14 @@
+// Swing UI
 import javax.swing.*;
+// AWT drawing, events, and geometry
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+// Collections and utilities
 import java.util.*;
 import java.util.List;
 
+// Collision simulation window: UI + rigid-body collision physics.
 public class CollisionEngine extends JFrame {
 
     // ─── constants ────────────────────────────────────────────────────────────
@@ -60,6 +64,7 @@ public class CollisionEngine extends JFrame {
     // ══════════════════════════════════════════════════════════════════════════
     // PHYSICS BODY
     // ══════════════════════════════════════════════════════════════════════════
+    // Square body with mass, velocity, and launch settings.
     static class Body {
         int   id;
         double x, y, vx, vy, mass;
@@ -87,6 +92,7 @@ public class CollisionEngine extends JFrame {
     // ══════════════════════════════════════════════════════════════════════════
     // SPARK PARTICLE
     // ══════════════════════════════════════════════════════════════════════════
+    // Visual effect spawned on impact.
     static class Spark {
         double x, y, vx, vy, life, maxLife, sz;
         Color c;
@@ -108,6 +114,7 @@ public class CollisionEngine extends JFrame {
     // ══════════════════════════════════════════════════════════════════════════
     // SIMULATION PANEL
     // ══════════════════════════════════════════════════════════════════════════
+    // Runs the physics loop, input handling, and rendering.
     class SimPanel extends JPanel {
         Body[] bodies;
         List<Spark> sparks = new ArrayList<>();
@@ -219,6 +226,7 @@ public class CollisionEngine extends JFrame {
             for(Body b:bodies){b.sx+=(1-b.sx)*0.16;b.sy+=(1-b.sy)*0.16;if(b.glow>0)b.glow-=0.035;}
         }
 
+        // Main physics step: integrate motion, resolve walls, then collisions.
         void tick(double dt){
             int fy=floorY(), lx=leftX(), rx=rightX();
             for(Body b:bodies){
@@ -252,6 +260,7 @@ public class CollisionEngine extends JFrame {
 
         void spark(double x,double y,Color c,int n){for(int i=0;i<n;i++)sparks.add(new Spark(x,y,c));}
 
+        // Resolve overlap and apply impulse-based collision response.
         void collide(Body a,Body b){
             double hs=(a.side()+b.side())/2;
             double dx=b.x-a.x,dy=b.y-a.y;

@@ -1,10 +1,14 @@
+// Swing UI
 import javax.swing.*;
+// AWT drawing and events
 import java.awt.*;
 import java.awt.event.*;
+// Collections and utilities
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+// Entry point that shows the mission select screen and opens simulations.
 public class Launcher extends JFrame {
 
     static final int W = 1100, H = 700; 
@@ -42,6 +46,7 @@ public class Launcher extends JFrame {
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    // Main menu panel that draws the animated cards and handles clicks.
     static class HomePanel extends JPanel {
 
         final Launcher launcher;
