@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Random;
 
 // Entry point that shows the mission select screen and opens simulations.
+// OOP: Inherits JFrame; launches different simulation classes.
 public class Launcher extends JFrame {
 
     static final int W = 1100, H = 700; 
@@ -28,18 +29,21 @@ public class Launcher extends JFrame {
     }
 
     void openSolarSim() {
+        // Close launcher window and open solar system engine.
         setVisible(false);
         dispose();
         SwingUtilities.invokeLater(() -> new SolarSystemEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
     }
 
     void openCollisionSim() {
+        // Close launcher window and open collision engine.
         setVisible(false);
         dispose();
         SwingUtilities.invokeLater(() -> new CollisionEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
     }
 
     void openBuoyancySim() {
+        // Close launcher window and open buoyancy engine.
         setVisible(false);
         dispose();
         SwingUtilities.invokeLater(() -> new BuoyancyEngine(() -> SwingUtilities.invokeLater(Launcher::new)));
@@ -47,6 +51,7 @@ public class Launcher extends JFrame {
 
     // ════════════════════════════════════════════════════════════════════════
     // Main menu panel that draws the animated cards and handles clicks.
+    // OOP: Separate UI class for the menu (encapsulation).
     static class HomePanel extends JPanel {
 
         final Launcher launcher;
@@ -56,6 +61,7 @@ public class Launcher extends JFrame {
         static final int STAR_COUNT = 320;
 
         // orbiting decorative particles
+        // Extra feature: animated orbs for a lively UI.
         static class Orb {
             double angle, radius, size, speed, alpha;
             int colorIdx;
@@ -80,6 +86,7 @@ public class Launcher extends JFrame {
             this.launcher = launcher;
             setBackground(C_BG1);
 
+            // Precompute stars for a static space background.
             Random rng = new Random(42);
             sx = new float[STAR_COUNT]; sy = new float[STAR_COUNT];
             sz = new float[STAR_COUNT]; spd = new float[STAR_COUNT];
@@ -90,6 +97,7 @@ public class Launcher extends JFrame {
                 spd[i] = rng.nextFloat() * 0.15f + 0.02f;
             }
 
+            // Decorative orbiting particles around the center.
             for (int i = 0; i < 28; i++) {
                 Orb o = new Orb();
                 o.angle    = rng.nextDouble() * Math.PI * 2;
@@ -114,12 +122,14 @@ public class Launcher extends JFrame {
                 public void mouseMoved(MouseEvent e) {
                     mouseOnSpace   = inCard(e.getX(), e.getY(), spaceCardX);
                     mouseOnCollide = inCard(e.getX(), e.getY(), collideCardX);
+                    // Hand cursor when hovering any card.
                     setCursor(Cursor.getPredefinedCursor(
                         (mouseOnSpace || mouseOnCollide) ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
                 }
             });
             addMouseListener(new MouseAdapter() {
                 public void mouseClicked(MouseEvent e) {
+                    // Click left card -> solar; right card -> choose collision/buoyancy.
                     if (inCard(e.getX(), e.getY(), spaceCardX))   launcher.openSolarSim();
                     if (inCard(e.getX(), e.getY(), collideCardX)) showCollisionBuoyancyMenu();
                 }
@@ -127,6 +137,7 @@ public class Launcher extends JFrame {
             });
 
             animTimer = new javax.swing.Timer(16, e -> {
+                // Smooth hover + orbit animation.
                 pulse = (float)((System.currentTimeMillis() - startTime) * 0.001);
                 for (Orb o : orbs) o.angle += o.speed;
                 hoverSpace   += (mouseOnSpace   ? 1 : -1) * 0.08f;
@@ -238,6 +249,7 @@ public class Launcher extends JFrame {
             int pw = getWidth();
             int ph = getHeight();
             updateLayout();
+            // Draw order: background -> decorations -> header -> cards -> footer.
             drawBg(g2, pw, ph);
             drawStars(g2, pw, ph);
             drawOrbs(g2, pw, ph);

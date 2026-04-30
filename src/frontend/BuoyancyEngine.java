@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.List;
 
 // Buoyancy simulation window: UI + water tank physics.
+// OOP: Inherits JFrame, composes SimPanel to keep UI and physics separate.
 public class BuoyancyEngine extends JFrame {
 
     // Screen sizing and physics scaling constants.
@@ -66,6 +67,7 @@ public class BuoyancyEngine extends JFrame {
     //  FLOATING OBJECT
     // ════════════════════════════════════════════════════════════════════════
     // Physics body that moves through the fluid (mass, density, size).
+    // OOP: Encapsulated state for each object; methods update its size/shape.
     static class FloatObj {
         int id;
         double x, y;          // centre
@@ -124,6 +126,7 @@ public class BuoyancyEngine extends JFrame {
     //  BUBBLE / SPLASH PARTICLE
     // ════════════════════════════════════════════════════════════════════════
     // Visual-only particles for surface splashes and bubbles.
+    // Extra feature: visual feedback for turbulence and impacts.
     static class Bubble {
         double x, y, vx, vy, r, life, maxLife;
         boolean isSplash;
@@ -162,6 +165,7 @@ public class BuoyancyEngine extends JFrame {
     //  SIMULATION PANEL
     // ════════════════════════════════════════════════════════════════════════
     // Owns the physics loop, rendering, and user interaction for buoyancy.
+    // Logic: applies buoyancy, gravity, drag, and surface tension each tick.
     class SimPanel extends JPanel {
         FloatObj[] objects;
         List<Bubble> bubbles = new ArrayList<>();
@@ -210,10 +214,12 @@ public class BuoyancyEngine extends JFrame {
 
         SimPanel() {
             setBackground(BG_DEEP); setOpaque(true);
+            // Background starfield points.
             Random rng = new Random(13);
             int ns=200; stX=new double[ns];stY=new double[ns];stR=new double[ns];stB=new double[ns];
             for(int i=0;i<ns;i++){stX[i]=rng.nextDouble();stY[i]=rng.nextDouble();stR[i]=rng.nextDouble()*1.3+0.3;stB[i]=rng.nextDouble()*0.5+0.2;}
 
+            // Default objects with different densities for comparison.
             objects = new FloatObj[]{
                 new FloatObj(0, OBJ_COLS[0]),
                 new FloatObj(1, OBJ_COLS[1]),
@@ -241,6 +247,7 @@ public class BuoyancyEngine extends JFrame {
                     }
                 }
                 public void mouseReleased(MouseEvent e){
+                    // Release: stop pinning and dampen throw speed.
                     if(dragObjIdx>=0){
                         FloatObj o=objects[dragObjIdx];
                         o.pinned=false;
@@ -261,6 +268,7 @@ public class BuoyancyEngine extends JFrame {
                         int dx = e.getX() - lastDrag.x;
                         int dy = e.getY() - lastDrag.y;
                         o.x += dx; o.y += dy;
+                        // Convert mouse delta to a gentle velocity.
                         o.vx = dx/dtS*0.25;
                         o.vy = dy/dtS*0.25;
                         waterShake += dx * 0.04;
@@ -281,6 +289,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void resetPositions() {
+            // Line up objects near the surface for a predictable start.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int tankLeft=tankMargin, tankW=pw-tankMargin*2;
             int tankTop=tankMargin;
@@ -298,6 +307,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void setFluidType(int type){
+            // Swap physical properties + colors for each fluid preset.
             switch(type){
                 case 0:
                     fluidName="Water";
@@ -338,6 +348,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void startSinkAnimation(){
+            // Drop active objects evenly across the tank.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int tankLeft=tankMargin, tankRight=pw-tankMargin;
             int tankTop=tankMargin;
@@ -364,6 +375,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void randomizeScene(){
+            // Randomize masses, densities, and fluid conditions for exploration.
             Random rng = new Random();
             for(FloatObj o:objects){
                 o.mass = 1 + rng.nextInt(40);
@@ -388,6 +400,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void stirFluid(){
+            // Kick objects and spawn splashes to simulate a stir.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int ph=getHeight()>10?getHeight():H;
             int tankLeft=tankMargin, tankRight=pw-tankMargin;
@@ -410,6 +423,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void dropObjects(){
+            // Reposition objects for a fresh drop test.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int tankLeft=tankMargin, tankRight=pw-tankMargin;
             int tankTop=tankMargin;
@@ -425,7 +439,9 @@ public class BuoyancyEngine extends JFrame {
         }
 
         // ── physics ───────────────────────────────────────────────────────
+        // Logic: integrates forces (buoyancy vs gravity) and damping per frame.
         void tick(double dt) {
+            // One physics step: update water surface, then move objects.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int ph=getHeight()>10?getHeight():H;
             int tankLeft=tankMargin, tankRight=pw-tankMargin;
@@ -437,6 +453,7 @@ public class BuoyancyEngine extends JFrame {
 
             waveTime+=dt*(paused?0.25:Math.max(0.35,timeScale));
             waterShake*=paused?0.96:0.92;
+            // Wave offset drives the animated water surface.
             double waveOffset = waveMode ? waveAmp*Math.sin(waveTime*waveFreq*Math.PI*2) : 0;
             waterSurfY = tankBottom - tankH*waterLevel + waveOffset;
 
@@ -504,7 +521,7 @@ public class BuoyancyEngine extends JFrame {
                         o.vx *= Math.max(0,1 - simDt*0.7);
                     }
 
-                    // turbulence
+                    // turbulence adds random jitter to the flow
                     if(turbulence && turbAmp>0){
                         o.vx += (Math.random()-0.5)*turbAmp*simDt*80*frac;
                         o.vy += (Math.random()-0.5)*turbAmp*simDt*40*frac;
@@ -570,6 +587,7 @@ public class BuoyancyEngine extends JFrame {
         void spawnSplash(int x,int y,Color c,int n){for(int i=0;i<n;i++)bubbles.add(new Bubble(x,y,true));}
 
         void resolveBoxCollision(FloatObj a, FloatObj b){
+            // Simple AABB collision resolution + impulse response.
             double dx=b.x-a.x,dy=b.y-a.y;
             double ox=(a.width+b.width)/2-Math.abs(dx), oy=(a.height+b.height)/2-Math.abs(dy);
             if(ox<=0||oy<=0)return;
@@ -654,6 +672,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void drawWater(Graphics2D g2,int pw,int ph){
+            // Draw the animated water surface and fill.
             int tl=tankMargin,tr=pw-tankMargin,tb=ph-tankMargin;
             int surfY=(int)waterSurfY;
             if(surfY>=tb)return;
@@ -720,6 +739,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void drawFlowField(Graphics2D g2,int pw,int ph){
+            // Debug-style arrows showing water flow direction.
             int tl=tankMargin+16,tr=pw-tankMargin-16,tb=ph-tankMargin-12;
             int sy=(int)waterSurfY+10;
             if(sy>=tb) return;
@@ -762,6 +782,7 @@ public class BuoyancyEngine extends JFrame {
         }
 
         void drawObjects(Graphics2D g2,int pw,int ph){
+            // Render objects with underwater tint and force arrows.
             // clip to tank
             int tl=tankMargin,tr=pw-tankMargin,tt=tankMargin,tb=ph-tankMargin;
             Shape oldClip=g2.getClip();

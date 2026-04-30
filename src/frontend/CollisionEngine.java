@@ -9,6 +9,7 @@ import java.util.*;
 import java.util.List;
 
 // Collision simulation window: UI + rigid-body collision physics.
+// OOP: Inherits JFrame, composes SimPanel for separation of concerns.
 public class CollisionEngine extends JFrame {
 
     // ─── constants ────────────────────────────────────────────────────────────
@@ -65,6 +66,7 @@ public class CollisionEngine extends JFrame {
     // PHYSICS BODY
     // ══════════════════════════════════════════════════════════════════════════
     // Square body with mass, velocity, and launch settings.
+    // OOP: Encapsulates body state; behavior is handled by SimPanel.
     static class Body {
         int   id;
         double x, y, vx, vy, mass;
@@ -93,6 +95,7 @@ public class CollisionEngine extends JFrame {
     // SPARK PARTICLE
     // ══════════════════════════════════════════════════════════════════════════
     // Visual effect spawned on impact.
+    // Extra feature: impact sparks and glow for better feedback.
     static class Spark {
         double x, y, vx, vy, life, maxLife, sz;
         Color c;
@@ -115,6 +118,7 @@ public class CollisionEngine extends JFrame {
     // SIMULATION PANEL
     // ══════════════════════════════════════════════════════════════════════════
     // Runs the physics loop, input handling, and rendering.
+    // Logic: impulse-based collision response + energy tracking.
     class SimPanel extends JPanel {
         Body[] bodies;
         List<Spark> sparks = new ArrayList<>();
@@ -133,6 +137,7 @@ public class CollisionEngine extends JFrame {
 
         SimPanel(){
             setBackground(BG0); setOpaque(true);
+            // Background starfield.
             Random rng=new Random(42); int ns=240;
             stX=new float[ns];stY=new float[ns];stSz=new float[ns];stBr=new float[ns];
             for(int i=0;i<ns;i++){stX[i]=rng.nextFloat();stY[i]=rng.nextFloat();stSz[i]=rng.nextFloat()*1.4f+0.3f;stBr[i]=rng.nextFloat()*0.55f+0.2f;}
@@ -152,6 +157,7 @@ public class CollisionEngine extends JFrame {
                     if(dragBody==null || drag0==null) return;
                     int dx=e.getX()-drag0.x, dy=e.getY()-drag0.y;
                     double len=Math.hypot(dx, dy);
+                    // Short drag cancels custom launch; long drag sets launch vector.
                     if(len<6){
                         dragBody.customLaunch=false;
                     } else {
@@ -182,6 +188,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void place(boolean clearLaunch){
+            // Re-center boxes and clear velocities.
             int pw=getWidth()>10?getWidth():W-CTRL_W;
             int[] xs={pw/4, pw/2, 3*pw/4};
             for(int i=0;i<3;i++){
@@ -197,6 +204,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void launch(){
+            // Apply either default or custom launch velocities.
             place(false); initKE=0;
             for(Body b:bodies){
                 if(!b.active)continue;
@@ -223,6 +231,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void anim(){
+            // Ease squash/stretch and glow back to normal.
             for(Body b:bodies){b.sx+=(1-b.sx)*0.16;b.sy+=(1-b.sy)*0.16;if(b.glow>0)b.glow-=0.035;}
         }
 
@@ -232,6 +241,7 @@ public class CollisionEngine extends JFrame {
             for(Body b:bodies){
                 if(!b.active)continue;
                 if(gravOn) b.vy+=GRAVITY*dt;
+                // Integrate velocity.
                 b.x+=b.vx*dt; b.y+=b.vy*dt;
                 if(showTrails){b.trail.add(new double[]{b.x,b.y});if(b.trail.size()>90)b.trail.remove(0);}
                 // floor
@@ -382,6 +392,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void drawArrows(Graphics2D g2){
+            // Velocity arrows for each active body.
             for(Body b:bodies){
                 if(!b.active)continue;
                 double spd=running?Math.hypot(b.vx,b.vy):(b.customLaunch?Math.hypot(b.launchVx,b.launchVy):b.initVel);
@@ -427,6 +438,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void drawDragPreview(Graphics2D g2){
+            // Dashed arrow preview for custom launch direction.
             if(dragBody==null || drag0==null || drag1==null) return;
             int dx=drag1.x-drag0.x, dy=drag1.y-drag0.y;
             if(Math.hypot(dx,dy)<5) return;
@@ -491,6 +503,7 @@ public class CollisionEngine extends JFrame {
         }
 
         void drawHUD(Graphics2D g2,int pw,int ph){
+            // Energy meter + status line.
             // energy bar top-left
             if(showEnergy){
                 double tke=0; for(Body b:bodies)if(b.active)tke+=0.5*b.mass*(b.vx*b.vx+b.vy*b.vy);
@@ -533,6 +546,7 @@ public class CollisionEngine extends JFrame {
     // CONTROL PANEL
     // ══════════════════════════════════════════════════════════════════════════
     JPanel buildCtrl(){
+        // Right-side control panel with per-box settings and global physics.
         JPanel shell=new JPanel(new BorderLayout()){
             @Override public Dimension getPreferredSize(){
                 Dimension base=super.getPreferredSize();

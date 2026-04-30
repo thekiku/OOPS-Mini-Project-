@@ -23,6 +23,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 
 // Main window that hosts the solar system simulation UI and physics loop.
+// OOP: Inherits from JFrame (inheritance) and composes a SimPanel (composition).
 public class SolarSystemEngine extends JFrame {
 
     // ── constants ─────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ public class SolarSystemEngine extends JFrame {
 
     // ── body ──────────────────────────────────────────────────────────────────
     // Core physics entity: position, velocity, mass, orbit parameters, visuals.
+    // OOP: Encapsulates all data for a celestial body in one class.
     static class Body {
         BT type;
         double x, y, vx, vy, mass, radius;
@@ -117,6 +119,7 @@ public class SolarSystemEngine extends JFrame {
 
     // ── particle ──────────────────────────────────────────────────────────────
     // Small visual particle for explosions and dust effects.
+    // Extra feature: particle system for explosions and supernova effects.
     static class Particle{
         double x,y,vx,vy; float sz; Color c; int life,maxLife;
         Particle(double x,double y,Color c){this(x,y,c,(Math.random()-.5)*6,(Math.random()-.5)*6,1.5f);}
@@ -160,10 +163,10 @@ public class SolarSystemEngine extends JFrame {
         // FIX #3: build sliders BEFORE SimPanel, then load after layout
         buildSliders();
         sim=new SimPanel();
-        // fit to screen — never exceed usable screen height
+        // fit to screen — use full usable width and height
         GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         Rectangle screen=ge.getMaximumWindowBounds();
-        int winW=Math.min(W,screen.width);
+        int winW=screen.width;
         int winH=screen.height;
         add(sim,BorderLayout.CENTER);
         add(buildControlPanel(),BorderLayout.EAST);   // orbital controls on the right
@@ -292,8 +295,9 @@ public class SolarSystemEngine extends JFrame {
         JScrollPane scroll=new JScrollPane(controlBody);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
-        scroll.setWheelScrollingEnabled(false);
+        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scroll.setWheelScrollingEnabled(true);
+        scroll.getVerticalScrollBar().setUnitIncrement(14);
         scroll.getViewport().setOpaque(false); scroll.setOpaque(false);
 
         JPanel shell=new JPanel(new BorderLayout());
@@ -315,6 +319,7 @@ public class SolarSystemEngine extends JFrame {
     }
 
     // ── AI chat panel ────────────────────────────────────────────────────────
+    // Extra feature: embedded AI assistant for explaining the simulation.
     JTextArea chatDisplay;
     JTextField chatInput;
     boolean chatCollapsed = true;
@@ -443,6 +448,7 @@ public class SolarSystemEngine extends JFrame {
     }
 
     // ── real NVIDIA API call ────────────────────────────────────────────────
+    // Extra feature: live API-backed Q&A about physics and controls.
     static final String NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
     static final String NVIDIA_MODEL_DEFAULT = "meta/llama-3.1-8b-instruct";
     // Optional local placeholder: paste your NVIDIA key here, or set NVIDIA_API_KEY env var.
@@ -692,6 +698,7 @@ public class SolarSystemEngine extends JFrame {
     //  SIMULATION PANEL
     // ══════════════════════════════════════════════════════════════════════════
     class SimPanel extends JPanel implements ActionListener {
+        // OOP: SimPanel encapsulates rendering + simulation update loop.
         List<Body>    bodies  = new CopyOnWriteArrayList<>();
         List<Particle> sparks = new CopyOnWriteArrayList<>();
         boolean paused=false, showOrbits=true, showTrails=true;
@@ -730,6 +737,7 @@ public class SolarSystemEngine extends JFrame {
         SimPanel(){
             setBackground(Color.BLACK); setOpaque(true);
             setFocusable(true); setFocusTraversalKeysEnabled(false);
+            // Starfield background points.
             Random rng=new Random(); int ns=300;
             stX=new double[ns];stY=new double[ns];stR=new double[ns];stB=new double[ns];
             for(int i=0;i<ns;i++){stX[i]=rng.nextDouble();stY[i]=rng.nextDouble();stR[i]=rng.nextDouble()*1.4+0.3;stB[i]=rng.nextDouble()*0.5+0.2;}
@@ -741,6 +749,7 @@ public class SolarSystemEngine extends JFrame {
                     int dx=e.getX()-drag0.x,dy=e.getY()-drag0.y;
                     double len=Math.hypot(dx,dy);
                     if(len<6){
+                        // Click: either toggle close-up or place a new body.
                         // close-up toggle
                         if(cuBlend>0.05||cuTarget>0.5){
                             if(!cuHit(e.getX(),e.getY())) cuTarget=0;
@@ -753,6 +762,7 @@ public class SolarSystemEngine extends JFrame {
                             spawn(drag0.x,drag0.y,0,0);
                         }
                     } else if(cuBlend<0.08&&cuTarget<0.5){
+                        // Drag: spawn with an initial velocity (slingshot feel).
                         spawn(drag0.x,drag0.y,(e.getX()-drag0.x)*0.1,(e.getY()-drag0.y)*0.1);
                     }
                     drag0=null;drag1=null;repaint();
@@ -767,6 +777,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void setupKeys(){
+            // Register WASD key bindings for the shuttle, even when focus changes.
             bindKey(KeyEvent.VK_W,true, ()->kW=true);  bindKey(KeyEvent.VK_W,false,()->kW=false);
             bindKey(KeyEvent.VK_A,true, ()->kA=true);  bindKey(KeyEvent.VK_A,false,()->kA=false);
             bindKey(KeyEvent.VK_S,true, ()->kS=true);  bindKey(KeyEvent.VK_S,false,()->kS=false);
@@ -789,6 +800,7 @@ public class SolarSystemEngine extends JFrame {
             }
             return null;
         }
+        // Close-up target position and radius are eased for a smooth zoom.
         double cuCX(Body b){return lerp(b.x,getWidth()*.5,smooth(cuBlend));}
         double cuCY(Body b){return lerp(b.y,getHeight()*.52,smooth(cuBlend));}
         double cuR(Body b){return lerp(Math.max(9,b.radius*1.6),Math.min(getWidth(),getHeight())*.34,smooth(cuBlend));}
@@ -805,12 +817,14 @@ public class SolarSystemEngine extends JFrame {
 
         // ── scene setup ───────────────────────────────────────────────────────
         void createSun(){
+            // Reset the sun based on slider values.
             sunM=sunMassSlider.getValue(); sunR=sunRadSlider.getValue();
             sunX=cx(); sunY=cy(); sunAlive=1.0;
             supernovaActive=false; supernovaAge=0; supernovaShockR=0; supernovaFade=0;
         }
 
         void loadSolarSystem(){
+            // Build a preset solar system with named planets and orbits.
             bodies.clear();sparks.clear();createSun();
             Object[][] data={
                 {"Mercury",52,4,5,0.21,0},{"Venus",80,7,2,0.01,0},
@@ -832,11 +846,13 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void recompute(){
+            // Recalculate orbital speeds when sun mass/radius changes.
             sunM=sunMassSlider.getValue(); sunR=sunRadSlider.getValue();
             for(Body b:bodies) if(b.kepler) b.orbit(sunX,sunY,sunM);
         }
 
         void addOrbiter(){
+            // Spawn a random planet and attach it to a Kepler orbit.
             double ang=Math.random()*Math.PI*2,dist=80+Math.random()*220;
             Body b=new Body(sunX+Math.cos(ang)*dist,sunY+Math.sin(ang)*dist,
                 20+Math.random()*60,6+Math.random()*10,BT.PLANET,(int)(Math.random()*PAL.length));
@@ -844,6 +860,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void scatterAsteroids(){
+            // Populate an asteroid belt with tiny bodies.
             for(int i=0;i<42;i++){
                 double ang=Math.random()*Math.PI*2,dist=155+Math.random()*75;
                 Body b=new Body(sunX+Math.cos(ang)*dist,sunY+Math.sin(ang)*dist,1,2+Math.random()*2,BT.ASTEROID,5);
@@ -852,6 +869,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void bigBang(){
+            // Spawn many bodies with outward velocities for an explosion effect.
             bodies.clear();sparks.clear();createSun();
             Random rng=new Random();
             for(int i=0;i<24;i++){
@@ -865,6 +883,7 @@ public class SolarSystemEngine extends JFrame {
         void clearAll(){bodies.clear();sparks.clear();createSun();}
 
         void triggerSupernova(){
+            // Start the supernova animation and push bodies outward.
             if(supernovaActive||sunAlive<=0.02) return;
             supernovaActive=true;
             supernovaAge=0;
@@ -880,6 +899,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void spawn(double x,double y,double vx,double vy){
+            // Create a new body based on current UI settings.
             String ts=(String)bodyTypeCombo.getSelectedItem(); if(ts==null) ts="Planet";
             int ci=colorCombo.getSelectedIndex();
             double r=pSizeSlider.getValue(),ecc=eccSlider.getValue()/100.0;
@@ -905,6 +925,7 @@ public class SolarSystemEngine extends JFrame {
 
         // ── physics ───────────────────────────────────────────────────────────
         void shuttleControls(double dt){
+            // WASD thrust and rotation for the shuttle.
             if(shuttle==null||shuttle.dead||!bodies.contains(shuttle)){shuttle=null;return;}
             Body s=shuttle; s.kepler=false;
             s.thrustMain=kW; s.thrustLeft=kA; s.thrustRight=kD; s.thrustReverse=kS;
@@ -916,6 +937,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void updateSupernova(double dt){
+            // Expanding shockwave that damages or knocks bodies out of orbit.
             if(!supernovaActive&&supernovaFade<=0) return;
             if(supernovaActive){
                 supernovaAge+=dt;
@@ -950,6 +972,7 @@ public class SolarSystemEngine extends JFrame {
         }
 
         void tick(double dt){
+            // One simulation step: update orbits, gravity, collisions, then cleanup.
             sunX=cx(); sunY=cy();
             sunM=sunMassSlider.getValue(); sunR=sunRadSlider.getValue();
             shuttleControls(dt);
@@ -957,6 +980,7 @@ public class SolarSystemEngine extends JFrame {
             // FIX #1/#2: correct kepler step
             for(Body b:bodies){
                 if(!b.kepler||b.type==BT.SHUTTLE) continue;
+                // Keplerian update uses stored orbit parameters around the sun.
                 double e=Math.min(b.orbitEcc,0.85);
                 double r_=b.orbitDist*(1-e*e)/(1+e*Math.cos(b.orbitAngle));
                 b.orbitAngle+=b.orbitSpeed*(b.orbitDist/Math.max(r_,0.1))*dt;
@@ -964,16 +988,17 @@ public class SolarSystemEngine extends JFrame {
                 b.vx=pos.x-b.x; b.vy=pos.y-b.y; b.x=pos.x; b.y=pos.y;
             }
 
-            // n-body for free bodies
+            // n-body for free bodies (not locked to Kepler orbits).
             List<Body> all=new ArrayList<>(bodies);
             for(Body a:bodies){
                 if(a.kepler) continue;
                 double ax=0,ay=0;
-                // sun gravity
+                // Sun gravity
                 double sdx=sunX-a.x,sdy=sunY-a.y,sd=Math.hypot(sdx,sdy)+1;
                 ax+=G*sunM*sunAlive*sdx/(sd*sd*sd); ay+=G*sunM*sunAlive*sdy/(sd*sd*sd);
                 for(Body b2:all){
                     if(b2==a) continue;
+                    // Body-to-body gravity (black holes have stronger pull).
                     double dx=b2.x-a.x,dy=b2.y-a.y,d=Math.hypot(dx,dy)+0.5;
                     double gm=b2.type==BT.BLACK_HOLE?G*b2.mass*6:G*b2.mass;
                     ax+=gm*dx/(d*d*d); ay+=gm*dy/(d*d*d);
@@ -984,7 +1009,7 @@ public class SolarSystemEngine extends JFrame {
 
             updateSupernova(dt);
 
-            // wormhole teleport
+            // Wormhole teleport: move body from one mouth to its partner.
             for(Body a:bodies){
                 if(a.kepler||a.type==BT.WORMHOLE) continue;
                 for(Body wh:bodies){
@@ -998,7 +1023,7 @@ public class SolarSystemEngine extends JFrame {
                 }
             }
 
-            // integrate + secondary animation
+            // Integrate positions and update per-body animation state.
             for(Body a:bodies){
                 if(!a.kepler){a.x+=a.vx*dt;a.y+=a.vy*dt;}
                 for(int m=0;m<a.moons;m++) a.mAngle[m]+=a.mSpeed[m]*dt*2;
@@ -1017,12 +1042,12 @@ public class SolarSystemEngine extends JFrame {
                 if(a.trail.size()>MAX_TRAIL) a.trail.remove(0);
             }
 
-            // collisions & absorptions
+            // Collisions & absorptions (sun, black holes, body merges).
             List<Body> rm=new ArrayList<>();
             for(int i=0;i<bodies.size();i++){
                 Body a=bodies.get(i); if(a.dead){rm.add(a);continue;}
 
-                // BH eats sun
+                // Black hole eats sun, reducing sunAlive.
                 if(a.type==BT.BLACK_HOLE&&sunAlive>0){
                     double d=Math.hypot(a.x-sunX,a.y-sunY);
                     if(d<sunR*sunAlive+a.radius){
@@ -1033,7 +1058,7 @@ public class SolarSystemEngine extends JFrame {
                     }
                 }
 
-                // sun physics for planets
+                // Sun surface + corona effects for planets and small bodies.
                 if(a.type!=BT.BLACK_HOLE&&a.type!=BT.PULSAR&&a.type!=BT.WORMHOLE&&sunAlive>0.1){
                     double sdx=a.x-sunX,sdy=a.y-sunY,sd=Math.hypot(sdx,sdy);
                     double surf=sunR*sunAlive, corona=surf+a.radius*1.6;
@@ -1061,7 +1086,7 @@ public class SolarSystemEngine extends JFrame {
                     }
                 }
 
-                // body-body
+                // Body-body collisions: shuttle bounces, black holes absorb, others merge.
                 for(int j=i+1;j<bodies.size();j++){
                     Body b=bodies.get(j); if(b.dead) continue;
                     double d=Math.hypot(b.x-a.x,b.y-a.y);
@@ -1091,7 +1116,7 @@ public class SolarSystemEngine extends JFrame {
                     }
                 }
 
-                // BH spag zone
+                // Black hole spaghettification zone.
                 if(a.type==BT.BLACK_HOLE){
                     for(Body b:bodies){
                         if(b==a||b.dead||b.type==BT.BLACK_HOLE||b.type==BT.WORMHOLE) continue;
@@ -1107,7 +1132,7 @@ public class SolarSystemEngine extends JFrame {
                     }
                 }
 
-                // OOB
+                // Out-of-bounds cleanup.
                 if(!a.kepler&&a.type!=BT.WORMHOLE&&(a.x<-600||a.x>getWidth()+600||a.y<-600||a.y>getHeight()+600)){a.dead=true;rm.add(a);}
             }
             bodies.removeAll(rm);
@@ -1119,6 +1144,7 @@ public class SolarSystemEngine extends JFrame {
 
         // ── close-up animation ────────────────────────────────────────────────
         void updateCu(){
+            // Ease the close-up animation in/out.
             if(cuBody!=null&&(cuBody.dead||!bodies.contains(cuBody))) cuTarget=0;
             cuBlend+=(cuTarget-cuBlend)*0.12;
             if(Math.abs(cuTarget-cuBlend)<0.001) cuBlend=cuTarget;
@@ -1128,6 +1154,7 @@ public class SolarSystemEngine extends JFrame {
 
         // ── textures ──────────────────────────────────────────────────────────
         void primeTextureCache(){
+            // Seed with placeholders, then fetch real textures asynchronously.
             for(String key:BASE_TEX_KEYS){
                 if("saturn".equals(key)||"neptune".equals(key)||"uranus".equals(key))
                     downloadedTextureFile(key).delete();
@@ -1136,6 +1163,7 @@ public class SolarSystemEngine extends JFrame {
             }
         }
         void resolveTextureAsync(String key){
+            // Background thread loads textures to keep UI responsive.
             if(texResolveQueued.putIfAbsent(key,Boolean.TRUE)!=null) return;
             Thread t=new Thread(() -> {
                 BufferedImage img=loadTextureImage(key);
@@ -1205,6 +1233,7 @@ public class SolarSystemEngine extends JFrame {
             return cached;
         }
         BufferedImage loadTextureImage(String key){
+            // Try bundled resources and local files first.
             String[] relPaths={
                 "textures/"+key+".png",
                 "textures/"+key+".jpg",
@@ -1254,6 +1283,7 @@ public class SolarSystemEngine extends JFrame {
             try{ ImageIO.write(img,"png",f); } catch(IOException ignored){}
         }
         BufferedImage downloadPhotorealTexture(String key){
+            // Network fallback: download higher-quality textures.
             String url=REMOTE_TEX_URLS.get(key);
             if(url==null||url.isBlank()) return null;
             try{
@@ -1286,6 +1316,7 @@ public class SolarSystemEngine extends JFrame {
             }
         }
         BufferedImage normalizeTexture(BufferedImage src){
+            // Clamp texture size to keep rendering fast and memory safe.
             if(src==null||src.getWidth()<2||src.getHeight()<2) return null;
             int sw=src.getWidth(),sh=src.getHeight();
             int tw=sw,th=sh;
@@ -1329,6 +1360,7 @@ public class SolarSystemEngine extends JFrame {
         }
         // FIX #12: safe spherical texture draw, guarded against zero-width source
         void drawSphere(Graphics2D g2,BufferedImage tex,double cx,double cy,double r,double spin){
+            // Approximate a sphere by slicing rows of a rectangular texture.
             if(tex==null||tex.getWidth()<2||tex.getHeight()<2||r<1) return;
             int rows=Math.max(80,(int)(r*1.2)),tw=tex.getWidth(),th=tex.getHeight();
             double spinU=(spin*0.24)/(Math.PI*2.0);
@@ -1367,12 +1399,14 @@ public class SolarSystemEngine extends JFrame {
 
         // ── tick ──────────────────────────────────────────────────────────────
         @Override public void actionPerformed(ActionEvent e){
+            // Timer tick: advance physics, then repaint.
             if(!paused&&speedSlider!=null) tick(speedSlider.getValue()/10.0);
             updateCu(); frame++; repaint();
         }
 
         // ── paint ─────────────────────────────────────────────────────────────
         @Override protected void paintComponent(Graphics g){
+            // Draw order matters: background -> bodies -> effects -> HUD.
             super.paintComponent(g);
             Graphics2D g2=(Graphics2D)g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
