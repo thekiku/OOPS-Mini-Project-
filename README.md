@@ -2,14 +2,6 @@
 
 A Java Swing based physics simulator made as a college mini project for Object Oriented Programming (OOP).
 
-## PPT Quick Summary
-
-- Three interactive modules: Solar System, Collision, and Buoyancy
-- Built with Java Swing/Java2D, modular OOP design
-- Real-time simulation controls and visual feedback
-- Optional AI assistant via NVIDIA API and optional planet textures
-- Windows-friendly run script with simple build steps
-
 This physics simulator has a main launcher with 3 simulation modules:
 - Solar System Physics Engine
 - Collision Physics Engine
